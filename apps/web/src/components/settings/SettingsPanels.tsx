@@ -138,6 +138,11 @@ import {
 } from "../ui/number-field";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
+import {
+  ChatBackgroundSettingsSection,
+  ColorSettingsSection,
+  TranslucencySettingsSection,
+} from "./GlassSettings";
 import { ScopedSwitch } from "./ScopedSwitch";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -1467,6 +1472,12 @@ export function AppearanceSettingsPanel() {
           }
         />
       </SettingsSection>
+
+      <ColorSettingsSection />
+
+      <TranslucencySettingsSection />
+
+      <ChatBackgroundSettingsSection />
 
       <SettingsSection id="motion" title="Motion">
         <SettingsRow

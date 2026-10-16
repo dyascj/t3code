@@ -106,7 +106,7 @@ function PendingSecretRequestForm(props: {
   return (
     <form
       data-v2-item-type={item.type}
-      className="flex min-w-0 flex-col gap-3 rounded-xl border border-border/60 bg-card p-4"
+      className="flex min-w-0 flex-col gap-3 rounded-xl border border-foreground/10 bg-foreground/[0.03] p-4"
       onSubmit={onSubmit}
       autoComplete="off"
       // A click anywhere on the card targets its field, so a paste that

@@ -1293,6 +1293,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
             <ComposerControl
               size={size}
               className="shrink-0 whitespace-nowrap"
+              data-composer-plan-toggle
               aria-pressed={props.interactionMode === "plan"}
               type="button"
               onClick={props.onToggleInteractionMode}
@@ -5460,7 +5461,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 !showInlineRestingControls &&
                   "@max-[640px]/composer-surface:[&_[data-chat-provider-model-picker-label]]:w-0 @max-[640px]/composer-surface:[&_[data-chat-provider-model-picker-label]]:flex-none",
               )
-            : "-ms-2.5 min-w-13"
+            : "min-w-13"
         }
         terminalOpen={terminalOpen}
         open={isComposerModelPickerOpen}
@@ -6876,7 +6877,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             data-chat-composer-surface="true"
             data-chat-composer-mobile-collapsed={isComposerCollapsedMobile ? "true" : "false"}
             className={cn(
-              "rounded-3xl transition-[background-color] duration-200",
+              "rounded-lg transition-[background-color] duration-200",
               "in-data-[thread-context-over]:bg-accent/45 in-data-[thread-context-over]:ring-1 in-data-[thread-context-over]:ring-inset in-data-[thread-context-over]:ring-primary/70",
               isDragOverComposer ? "bg-accent/45 ring-1 ring-inset ring-primary/70" : null,
               projectSelectionRequired ? "opacity-75" : null,
@@ -6947,9 +6948,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               ref={setComposerMenuAnchor}
               data-chat-composer-body="true"
               className={cn(
-                "relative px-3 pb-2 sm:px-4",
-                "pt-3.5 sm:pt-4",
-                isComposerApprovalState && "pb-3 sm:pb-4",
+                "relative px-3 pt-3 pb-2",
+                isComposerApprovalState && "pb-3",
                 isComposerCollapsedMobile && "hidden",
                 isComposerResting && "py-2 sm:py-2",
               )}
@@ -7525,7 +7525,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 data-chat-composer-footer="true"
                 data-chat-composer-footer-compact={isComposerFooterCompact ? "true" : "false"}
                 className={cn(
-                  "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible px-3 pb-3 sm:px-4 sm:pb-4",
+                  "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible",
+                  isComposerResting ? "px-3 sm:px-4" : "px-2 pb-2",
                   pendingUserInputs.length > 0 && "pt-2",
                   isComposerFooterCompact ? "gap-1.5" : "gap-2 sm:gap-0",
                   showMobilePendingAnswerActions && "hidden sm:flex",
@@ -7540,7 +7541,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   data-chat-composer-controls="left"
                   data-chat-composer-footer-controls="true"
                   className={cn(
-                    "relative -m-1 -ms-3.5 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 ps-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                    "relative -m-1 -ms-2 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 ps-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
                     isComposerResting && "hidden",
                   )}
                 >
@@ -7578,10 +7579,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       <Tooltip>
                         <TooltipTrigger
                           render={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
+                            <ComposerControl
+                              className="size-7 px-0 text-muted-foreground hover:text-foreground sm:size-6.5"
                               onPointerDown={(event) => event.preventDefault()}
                               onClick={() => attachmentInputRef.current?.click()}
                               aria-label="Attach files"

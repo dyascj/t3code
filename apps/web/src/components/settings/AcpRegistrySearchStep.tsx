@@ -212,7 +212,7 @@ export function AcpRegistrySearchStep({
 
       {results ? (
         results.length === 0 ? (
-          <div className="flex min-h-28 flex-col items-center justify-center rounded-2xl border border-dashed px-4 text-center">
+          <div className="flex min-h-28 flex-col items-center justify-center rounded-xl border border-foreground/10 bg-foreground/[0.03] px-4 text-center">
             <p className="text-sm font-medium">No compatible agents found</p>
             <p className="mt-1 text-xs text-muted-foreground">Try a broader search.</p>
           </div>

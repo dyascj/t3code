@@ -148,9 +148,9 @@ export function V2LifecycleRow(props: {
       return (
         <div
           data-v2-item-type={item.type}
-          className="flex min-w-0 items-center gap-3 rounded-lg border border-border/60 p-3"
+          className="flex min-w-0 items-center gap-3 rounded-xl border border-foreground/10 bg-foreground/[0.03] p-3"
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted/60">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-foreground/5">
             <MessageSquareIcon className="size-4 text-secondary-label" aria-hidden />
           </span>
           <span className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -279,7 +279,7 @@ export function SubagentAvatar({
     <span
       aria-hidden
       className={cn(
-        "relative inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted ring-2 ring-background",
+        "relative inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-foreground/10 bg-foreground/5 ring-2 ring-background",
         className,
       )}
     >

@@ -79,6 +79,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -2154,6 +2155,7 @@ const TimelineRowContent = memo(function TimelineRowContent({ row }: { row: Time
       )}
       data-timeline-row-id={row.id}
       data-timeline-row-kind={row.kind}
+      data-expanded-tool-group={isExpandedToolGroup ? "" : undefined}
       data-message-id={
         row.kind === "message" || row.kind === "assistant-meta" ? row.message.id : undefined
       }
@@ -2354,6 +2356,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
     [userImages],
   );
   const revertTurnCount = row.revertTurnCount;
+  const entering = useOneShotEntrance(row.message.id, row.message.createdAt, PROMPT_RISE_MS);
   // A file with a chip in the prose needs no standalone row. Media is the exception: the
   // thumbnail is the only way to actually see it, so it shows whether or not it has a chip.
   const chippedAttachmentIds = new Set(
@@ -2480,7 +2483,10 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
   );
 
   return (
-    <div className="group flex flex-col items-end gap-1">
+    <div
+      className="group flex flex-col items-end gap-1"
+      data-user-message-entering={entering ? "" : undefined}
+    >
       {userMessage.attribution === "automation" ? (
         <p
           className="me-1 text-2xs text-muted-foreground/70"
@@ -2526,7 +2532,10 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
       {row.message.inputIntent && row.message.inputIntent !== "turn_start" ? (
         <UserMessageIntentMarker intent={row.message.inputIntent} />
       ) : null}
-      <div className="relative max-w-[80%] rounded-2xl bg-message p-3 text-message-foreground">
+      <div
+        className="relative max-w-[80%] rounded-2xl bg-message p-3 text-message-foreground"
+        data-user-message-bubble="sent"
+      >
         <MessageAuthorHeading>You</MessageAuthorHeading>
         {(regularImages.length > 0 || userVideos.length > 0) && (
           <div className="mb-2 grid max-w-[210px] grid-cols-2 gap-2">
@@ -2537,7 +2546,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
                   "bg-background/70",
                   image.source?.kind === "snap-shot" && image.previewUrl
                     ? cn(SNAP_SHOT_ATTACHMENT_FRAME_CLASS, "col-span-2")
-                    : "aspect-[4/3] overflow-hidden rounded-lg border border-border/80",
+                    : "aspect-[4/3] overflow-hidden rounded-lg border border-foreground/10",
                 )}
               >
                 {image.previewUrl ? (
@@ -2649,7 +2658,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
           </span>
         </div>
       ) : null}
-      <div className="flex w-full max-w-[80%] items-center justify-end pe-1 text-xs tabular-nums opacity-0 transition-opacity duration-200 pointer-coarse:opacity-100 focus-within:opacity-100 group-hover:opacity-100">
+      <div className="flex w-full max-w-[80%] items-center justify-end pe-1 text-xs tabular-nums opacity-0 transition-opacity duration-150 pointer-coarse:opacity-100 focus-within:opacity-100 group-hover:opacity-100">
         <div className="flex shrink-0 items-center gap-2">
           <Tooltip>
             <TooltipTrigger render={<p className="text-muted-foreground text-xs tabular-nums" />}>
@@ -2832,7 +2841,7 @@ function TurnFoldTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "turn-
   const ctx = use(TimelineRowCtx);
 
   return (
-    <div className="group/timeline-row relative flex items-center gap-1 border-b border-border/60 pb-2 pe-0.5 pt-1">
+    <div className="group/timeline-row relative flex items-center gap-1 pb-2 pe-0.5 pt-1">
       <button
         type="button"
         aria-expanded={row.expanded}
@@ -2862,7 +2871,7 @@ function AttemptFoldTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "at
       data-scroll-anchor-ignore
       data-superseded-attempt-id={row.attemptId}
       onClick={() => ctx.onToggleAttemptFold(row.attemptId)}
-      className="flex w-full cursor-pointer select-none items-center gap-2 rounded-md border border-border/60 bg-muted/20 px-2.5 py-2 text-left transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70"
+      className="flex w-full cursor-pointer select-none items-center gap-2 rounded-md border border-foreground/10 bg-foreground/[0.03] px-2.5 py-2 text-left transition-colors hover:bg-foreground/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70"
     >
       <MorphIcon
         className="size-3.5 shrink-0 text-muted-foreground"
@@ -3071,10 +3080,16 @@ function ProposedPlanTimelineRow({
   row: Extract<TimelineRow, { kind: "proposed-plan" }>;
 }) {
   const ctx = use(TimelineRowCtx);
+  const celebrate = useOneShotEntrance(
+    row.proposedPlan.id,
+    row.proposedPlan.createdAt,
+    PLAN_STEPS_MS,
+  );
 
   return (
     <div className="min-w-0 px-1 py-0.5">
       <ProposedPlanCard
+        celebrate={celebrate}
         planMarkdown={row.proposedPlan.planMarkdown}
         environmentId={ctx.activeThreadEnvironmentId}
         threadRef={ctx.threadRef ?? undefined}
@@ -3332,7 +3347,7 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
         presentation.tone === "warning" && "border-warning/25 bg-warning/5",
         presentation.tone === "danger" && "border-destructive/25 bg-destructive/5",
         presentation.tone === "success" && "border-success/20 bg-success/5",
-        presentation.tone === "muted" && "border-border/60 bg-card/30",
+        presentation.tone === "muted" && "border-foreground/10 bg-foreground/[0.03]",
       )}
       data-v2-item-type={item.type}
       data-v2-item-visibility={visibility}
@@ -3439,6 +3454,159 @@ function subagentGroupTiming(
   };
 }
 
+// ---------------------------------------------------------------------------
+// One-shot entrances: play once for an item that arrived moments ago, never
+// for history or a row the virtualizer remounts.
+// ---------------------------------------------------------------------------
+
+const ENTRANCE_WINDOW_MS = 4000;
+const PROMPT_RISE_MS = 560;
+const PLAN_STEPS_MS = 3200;
+const CONSTELLATION_MS = 3100;
+const playedEntrances = new Set<string>();
+
+function useOneShotEntrance(id: string, createdAt: string | undefined, durationMs: number) {
+  const [fresh] = useState(() => {
+    if (!createdAt || playedEntrances.has(id)) return false;
+    return Math.abs(Date.now() - Date.parse(createdAt)) < ENTRANCE_WINDOW_MS;
+  });
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    if (!fresh) return;
+    playedEntrances.add(id);
+    const timer = setTimeout(() => setDone(true), durationMs);
+    return () => clearTimeout(timer);
+  }, [durationMs, fresh, id]);
+  return fresh && !done;
+}
+
+interface ConstellationPoint {
+  x: number;
+  y: number;
+  from: { x: number; y: number };
+  delay: number;
+  draw: number;
+  child: boolean;
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+/** Hub at the bottom center, 3-6 nodes fanned above it, every other node with a child. */
+function buildConstellation(width: number, height: number) {
+  const pad = 8;
+  const maxX = Math.max(pad, width - pad);
+  const maxY = Math.max(pad, height - pad);
+  const hub = { x: width / 2, y: maxY };
+  const count = clampNumber(Math.round(width / 90), 3, 6);
+  const top = Math.min(maxY, Math.max(pad, height * 0.35));
+  const bottom = Math.max(top, Math.min(maxY - 10, height * 0.7));
+  const nodes: ConstellationPoint[] = Array.from({ length: count }, (_, index) => ({
+    x: clampNumber(((index + 0.2 + Math.random() * 0.6) / count) * width, pad, maxX),
+    y: top + Math.random() * (bottom - top),
+    from: hub,
+    delay: 0,
+    draw: 320,
+    child: false,
+  }));
+  nodes.sort((a, b) => Math.abs(a.x - hub.x) - Math.abs(b.x - hub.x));
+  nodes.forEach((node, index) => {
+    node.delay = 280 + index * 80;
+  });
+  const children = nodes
+    .filter((_, index) => index % 2 === 1)
+    .map((node) => ({
+      x: clampNumber(node.x + (node.x < hub.x ? -1 : 1) * (22 + Math.random() * 18), pad, maxX),
+      y: clampNumber(node.y + (Math.random() - 0.5) * 12, top, maxY),
+      from: { x: node.x, y: node.y },
+      delay: node.delay + node.draw + 60,
+      draw: 220,
+      child: true,
+    }));
+  return { hub, nodes: [...nodes, ...children] };
+}
+
+/** The orchestrator flourish: a hub sends edges out to its agents, then the net lifts away. */
+function OrchestratorConstellation() {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [network, setNetwork] = useState<{
+    width: number;
+    height: number;
+    graph: ReturnType<typeof buildConstellation>;
+  } | null>(null);
+  useLayoutEffect(() => {
+    const box = ref.current?.getBoundingClientRect();
+    if (box) {
+      setNetwork({
+        width: box.width,
+        height: box.height,
+        graph: buildConstellation(box.width, box.height),
+      });
+    }
+  }, []);
+  return (
+    <span aria-hidden ref={ref} className="orchestrator-constellation">
+      {network ? (
+        <span className="orchestrator-network">
+          <svg
+            className="orchestrator-edges"
+            width={network.width}
+            height={network.height}
+            viewBox={`0 0 ${network.width} ${network.height}`}
+          >
+            {network.graph.nodes.map((node, index) => {
+              const style = {
+                "--length": Math.hypot(node.x - node.from.x, node.y - node.from.y),
+                "--delay": `${node.delay}ms`,
+                "--draw": `${node.draw}ms`,
+              } as CSSProperties;
+              return (
+                <g key={index}>
+                  <line
+                    className="orchestrator-edge"
+                    x1={node.from.x}
+                    y1={node.from.y}
+                    x2={node.x}
+                    y2={node.y}
+                    style={style}
+                  />
+                  <line
+                    className="orchestrator-pulse"
+                    x1={node.from.x}
+                    y1={node.from.y}
+                    x2={node.x}
+                    y2={node.y}
+                    style={style}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+          <span
+            className="orchestrator-hub"
+            style={{ left: network.graph.hub.x, top: network.graph.hub.y }}
+          />
+          {network.graph.nodes.map((node, index) => (
+            <span
+              key={index}
+              className="orchestrator-node"
+              data-child={node.child ? "true" : undefined}
+              style={
+                {
+                  left: node.x,
+                  top: node.y,
+                  "--delay": `${node.delay + node.draw - 40}ms`,
+                } as CSSProperties
+              }
+            />
+          ))}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 const V2SubagentGroup = memo(function V2SubagentGroup({
   row,
 }: {
@@ -3468,6 +3636,7 @@ const V2SubagentGroup = memo(function V2SubagentGroup({
     };
   });
   const summary = subagentGroupSummary(agents);
+  const entering = useOneShotEntrance(row.id, row.createdAt, CONSTELLATION_MS);
   const label = `${members.length} ${members.length === 1 ? "subagent" : "subagents"}`;
   const statusSummary = summarizeSubagentStatuses(agents.map(({ status }) => status));
   const toggleExpanded = (open: boolean) => {
@@ -3478,12 +3647,17 @@ const V2SubagentGroup = memo(function V2SubagentGroup({
   };
   return (
     <WorkLogBlock continues={row.continuesWorkLog}>
-      <Collapsible open={expanded} onOpenChange={toggleExpanded} data-subagent-group>
+      <Collapsible
+        open={expanded}
+        onOpenChange={toggleExpanded}
+        data-subagent-group
+        data-agent-spawn=""
+      >
         <CollapsibleTrigger
           aria-label={label}
           aria-description={statusSummary}
           className={cn(
-            "flex w-full min-w-0 items-center gap-3 py-2 text-left transition-opacity hover:opacity-100",
+            "relative flex w-full min-w-0 items-center gap-3 py-2 text-left transition-opacity hover:opacity-100",
             expanded || summary.active
               ? "text-foreground opacity-100"
               : "text-muted-foreground opacity-55",
@@ -3501,7 +3675,7 @@ const V2SubagentGroup = memo(function V2SubagentGroup({
               />
             ))}
             {agents.length > 3 ? (
-              <span className="inline-flex size-6 items-center justify-center rounded-full bg-muted text-3xs font-medium text-muted-foreground ring-2 ring-background">
+              <span className="inline-flex size-6 items-center justify-center rounded-full border border-foreground/10 bg-foreground/5 text-3xs font-medium text-muted-foreground ring-2 ring-background">
                 +{agents.length - 3}
               </span>
             ) : null}
@@ -3527,11 +3701,12 @@ const V2SubagentGroup = memo(function V2SubagentGroup({
               expanded && "rotate-180",
             )}
           />
+          {entering && summary.active ? <OrchestratorConstellation /> : null}
         </CollapsibleTrigger>
         {/* Virtualized rows must settle before disclosure scroll anchoring resumes. */}
         <CollapsiblePanel animate={false}>
           {expanded ? (
-            <div className="mt-1 mb-1 rounded-lg border border-border/60 bg-card/30 p-1">
+            <div className="mt-1 mb-1 rounded-lg border border-foreground/10 bg-foreground/[0.03] p-1">
               {members.map((item) => (
                 <V2LifecycleRow
                   environmentId={ctx.activeThreadEnvironmentId}
@@ -3852,7 +4027,7 @@ function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "workin
     "Working..."
   );
   return (
-    <div className="border-b border-border/60 pb-2 pt-1">
+    <div className="pb-2 pt-1">
       <div className="flex h-6 min-w-0 items-baseline gap-2 px-1 text-sm leading-relaxed text-muted-foreground tabular-nums">
         <span
           ref={shimmer ? observeVisibleAnimation : undefined}
@@ -3957,24 +4132,35 @@ function LiveActivityRow({
 }) {
   const animated = active && !failed;
   const showShimmer = animated && shimmer;
+  // Work ticker: once a live row's label changes, the new label slides up
+  // into place. The first label never moves.
+  const [initialLabel] = useState(label);
+  const tickKey = animated && typeof label === "string" && label !== initialLabel ? label : null;
   return (
     <div
       ref={animated ? observeVisibleAnimation : undefined}
       className="relative min-h-6 w-fit max-w-full min-w-0 overflow-hidden rounded-md text-sm leading-relaxed"
     >
-      <LiveActivityContent
-        label={label}
-        iconName={iconName}
-        toolIcon={toolIcon}
-        failed={failed}
-        announceFailure={failed}
-        active={animated && !shimmer}
-      />
-      {showShimmer ? (
-        <ActivityShimmerOverlay>
-          <LiveActivityContent label={label} iconName={iconName} toolIcon={toolIcon} highlighted />
-        </ActivityShimmerOverlay>
-      ) : null}
+      <div key={tickKey} className={tickKey === null ? undefined : "transcript-work-tick"}>
+        <LiveActivityContent
+          label={label}
+          iconName={iconName}
+          toolIcon={toolIcon}
+          failed={failed}
+          announceFailure={failed}
+          active={animated && !shimmer}
+        />
+        {showShimmer ? (
+          <ActivityShimmerOverlay>
+            <LiveActivityContent
+              label={label}
+              iconName={iconName}
+              toolIcon={toolIcon}
+              highlighted
+            />
+          </ActivityShimmerOverlay>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -4014,11 +4200,12 @@ function LiveActivityContent({
             )}
             role={announceFailure ? "img" : undefined}
             aria-label={announceFailure ? "Tool call failed" : undefined}
+            data-activity-icon=""
           >
             <ToolActivityIconView
               icon={toolIcon}
               fallbackName={iconName}
-              className="block size-4 shrink-0 stroke-2"
+              className="block size-3.5 shrink-0"
               muted={!highlighted}
             />
           </span>
@@ -4124,11 +4311,14 @@ function LiveWorkEntryTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "
         // ordinary work-log row, so a finding never hides behind the next tool call.
         <WorkLogRow
           icon={
-            <span className="flex size-4 items-center justify-center text-icon-muted">
+            <span
+              className="flex size-4 items-center justify-center text-icon-muted"
+              data-activity-icon=""
+            >
               <ToolActivityIconView
                 icon={undefined}
                 fallbackName="brain"
-                className="block size-4 shrink-0 stroke-2"
+                className="block size-3.5 shrink-0"
                 muted
               />
             </span>
@@ -4261,12 +4451,17 @@ function WorkGroupHeader(props: {
       aria-expanded={props.expanded}
       onClick={props.onToggle}
       icon={
-        <ToolActivityIconView
-          icon={props.toolIcon}
-          fallbackName={props.iconName}
-          className="size-4 shrink-0 stroke-2 text-icon-muted"
-          muted
-        />
+        <span
+          className="flex size-4 items-center justify-center text-icon-muted"
+          data-activity-icon=""
+        >
+          <ToolActivityIconView
+            icon={props.toolIcon}
+            fallbackName={props.iconName}
+            className="size-3.5 shrink-0"
+            muted
+          />
+        </span>
       }
       label={
         <span className={cn("block truncate", props.active && !props.failed && "live-tool-shine")}>
@@ -5484,7 +5679,7 @@ function ReasoningTraceContent({ entries }: { entries: ReadonlyArray<TimelineWor
       {entries.map((entry) => (
         <ChatMarkdown
           key={entry.id}
-          className="text-foreground"
+          className="transcript-reasoning"
           text={entry.detail ?? ""}
           cwd={ctx.markdownCwd}
           threadRef={ctx.threadRef ?? undefined}
@@ -5763,11 +5958,12 @@ function WorkEntryLogRow(props: WorkEntryRowProps) {
           className={iconWrapperClass}
           role={showFailedIndicator ? "img" : undefined}
           aria-label={showFailedIndicator ? "Tool call failed" : undefined}
+          data-activity-icon=""
         >
           <ToolActivityIconView
             icon={entryToolIcon}
             fallbackName={entryIconName}
-            className="block size-4 shrink-0 stroke-2"
+            className="block size-3.5 shrink-0"
             muted
           />
         </span>

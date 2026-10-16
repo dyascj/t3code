@@ -13,13 +13,14 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/
 import { SidebarInset } from "../components/ui/sidebar";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { useNewThreadHandler } from "../hooks/useHandleNewThread";
+import { useScratchProject } from "../hooks/useScratchProject";
 import {
   readProject,
   useAllEnvironmentShellsBootstrapped,
   useProjects,
   useThreadShells,
 } from "../state/entities";
-import { useEnvironments } from "../state/environments";
+import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
 import { APP_DISPLAY_NAME } from "~/branding";
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
 
@@ -36,9 +37,10 @@ function ChatIndexRouteView() {
 }
 
 /**
- * Landing on the index route drops straight into a draft thread for the most
- * recently active project, so the first screen is a prompt instead of a dead
- * end. Falls back to an add-project hero when no project exists yet.
+ * Landing on the index route (Home) drops straight into the No project draft,
+ * whose empty state carries the week's stats. Without No project threads it
+ * opens a draft in the most recently active project, and falls back to an
+ * add-project hero when no project exists yet.
  */
 function IndexDraftLanding() {
   const projects = useProjects();
@@ -49,6 +51,9 @@ function IndexDraftLanding() {
   // Read at effect time: this page stays mounted while a navigation away from
   // "/" is still loading, but the router already points at the new location.
   const isStillOnIndex = useEffectEvent(() => router.state.location.pathname === "/");
+  const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const { scratchEnvironmentId, openScratchProject } = useScratchProject();
+  const scratchTarget = bootstrapped ? scratchEnvironmentId(primaryEnvironmentId) : null;
   const startingRef = useRef(false);
   const [startState, setStartState] = useState({ failed: false, retryRequest: 0 });
 
@@ -62,17 +67,31 @@ function IndexDraftLanding() {
 
   useEffect(() => {
     // Starting a draft after the user has left would replace the page they picked.
-    if (mostRecentProject === null || startingRef.current || !isStillOnIndex()) {
+    if (
+      (scratchTarget === null && mostRecentProject === null) ||
+      startingRef.current ||
+      !isStillOnIndex()
+    ) {
       return;
     }
-    const projectRef = scopeProjectRef(mostRecentProject.environmentId, mostRecentProject.id);
     // A project removed since this render is gone from the store; the next
     // render picks another one.
-    if (readProject(projectRef) === null) {
+    if (
+      scratchTarget === null &&
+      mostRecentProject !== null &&
+      readProject(scopeProjectRef(mostRecentProject.environmentId, mostRecentProject.id)) === null
+    ) {
       return;
     }
     startingRef.current = true;
-    void handleNewThread(projectRef, { replace: true })
+    void (async () => {
+      const project =
+        scratchTarget === null ? mostRecentProject : await openScratchProject(scratchTarget);
+      if (project === null) throw new Error("No project to start a draft in.");
+      return handleNewThread(scopeProjectRef(project.environmentId, project.id), {
+        replace: true,
+      });
+    })()
       .then((opened) => {
         // The project was removed while its draft started; land on the next one.
         if (opened === null) {
@@ -84,12 +103,18 @@ function IndexDraftLanding() {
         startingRef.current = false;
         setStartState((state) => ({ ...state, failed: true }));
       });
-  }, [handleNewThread, mostRecentProject, startState.retryRequest]);
+  }, [
+    handleNewThread,
+    mostRecentProject,
+    openScratchProject,
+    scratchTarget,
+    startState.retryRequest,
+  ]);
 
   if (!bootstrapped) {
     return null;
   }
-  if (mostRecentProject !== null) {
+  if (mostRecentProject !== null || scratchTarget !== null) {
     return startState.failed ? (
       <DraftStartError
         onRetry={() => {

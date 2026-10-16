@@ -935,7 +935,18 @@ function MarkdownCodeBlock({
           />
         }
       >
-        <MorphIcon className="size-3" icon={copied ? Check : Copy} />
+        <svg
+          viewBox="0 0 20 20"
+          aria-hidden="true"
+          className="chat-markdown-copy-glyph size-3.5"
+          data-copied={copied ? "true" : undefined}
+        >
+          <g className="chat-markdown-copy-pages">
+            <path d="M12 4H6a2 2 0 0 0-2 2v6" />
+            <rect x="7" y="7" width="9" height="9" rx="1.5" />
+          </g>
+          <path className="chat-markdown-copy-check" d="M4.5 10.5 8.2 14 15.5 6.5" />
+        </svg>
       </TooltipTrigger>
       <TooltipPopup side="top">{copyLabel}</TooltipPopup>
     </Tooltip>

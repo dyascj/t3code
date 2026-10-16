@@ -1,0 +1,236 @@
+/* Glass: shell. The app frame after the reference design: title bar tabs, the
+   sidebar and its icon rail, menus, tooltips, toasts, the command bar, settings,
+   right panels, and diff colors. This file is inlined before the rest of
+   index.css, so rules that compete with an index.css rule carry an extra `html`
+   (or `:root`) for specificity. Tailwind utilities live in a layer and lose to
+   these unlayered rules without help. */
+
+/* Tokens. Region strokes are the text color at 7%; selection fills are
+   10% in dark and 6% in light; focus rings use the reference accent.
+   Imported themes keep their own palette. */
+html:root {
+  --glass-stroke: color-mix(in srgb, var(--foreground) 7%, transparent);
+  --glass-selection: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --glass-row-selected: var(--glass-selection);
+  --glass-accent: #459bf7;
+}
+html:root:not(.dark) {
+  --glass-selection: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+html:root:is(:not([data-theme-id]), [data-theme-id=""]),
+html:root:is(:not([data-theme-id]), [data-theme-id=""]) [data-app-sidebar] {
+  --border: var(--glass-stroke);
+  --sidebar-border: var(--glass-stroke);
+  --ring: var(--glass-accent);
+}
+
+/* Scrollbars: a pill thumb at 16% of the text color, 32% on hover. */
+html:root,
+html.dark:root {
+  --app-scrollbar-thumb: color-mix(in srgb, var(--foreground) 16%, transparent);
+  --app-scrollbar-thumb-hover: color-mix(in srgb, var(--foreground) 32%, transparent);
+}
+html ::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+}
+
+/* Diff colors: emerald and rose (blue and orange for the colorblind palette).
+   The diff renderer derives its own line fills from these. */
+html:root:not([data-diff-color-scheme="blue-orange"]) {
+  --diff-addition: #10b981;
+  --diff-deletion: #f43f5e;
+  --diff-addition-foreground: light-dark(#047857, #6ee7b7);
+  --diff-deletion-foreground: light-dark(#be123c, #fda4af);
+}
+html:root[data-diff-color-scheme="blue-orange"] {
+  --diff-addition: light-dark(#0969da, #388bfd);
+  --diff-deletion: light-dark(#bc4c00, #db6d28);
+  --diff-addition-foreground: light-dark(#0550ae, #79c0ff);
+  --diff-deletion-foreground: light-dark(#953800, #ffa657);
+}
+html:root {
+  --diffs-addition-color-override: var(--diff-addition);
+  --diffs-deletion-color-override: var(--diff-deletion);
+}
+
+/* Title bar tabs. Open and close fold the slot's width (and the strip gap)
+   without a fade; the clipped content rides along. */
+@keyframes glass-tab-open {
+  from {
+    width: 0;
+    min-width: 0;
+    margin-right: -0.125rem;
+  }
+  to {
+    width: 14rem;
+    min-width: 7rem;
+    margin-right: 0;
+  }
+}
+html [data-tab-opening] {
+  animation-name: glass-tab-open;
+}
+html [data-tab-closing] {
+  opacity: 1;
+  margin-right: -0.125rem;
+  transition:
+    width var(--motion-tab-duration) var(--motion-tab-ease),
+    min-width var(--motion-tab-duration) var(--motion-tab-ease),
+    margin-right var(--motion-tab-duration) var(--motion-tab-ease);
+}
+/* Long labels fade out at the end instead of an ellipsis. The scroll timeline
+   is only active while the label overflows, so short labels stay unmasked. */
+@supports (animation-timeline: scroll()) {
+  .tab-label {
+    text-overflow: clip;
+    animation: tab-label-overflow linear both;
+    animation-timeline: scroll(self inline);
+  }
+}
+@keyframes tab-label-overflow {
+  from,
+  to {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+}
+
+/* Sidebar rows and the icon rail: 6px corners, text at 50% that lifts to full
+   on a 10% hover, the selection fill when current, and icons in the row's own
+   color at a 1.75 stroke. Rail icons press in slightly. */
+[data-app-sidebar] [data-slot="sidebar-menu"] {
+  gap: 1px;
+}
+[data-slot="sidebar"][data-state="collapsed"] [data-app-sidebar] [data-slot="sidebar-menu"] {
+  gap: 0.375rem;
+}
+[data-app-sidebar] [data-slot="sidebar-menu-button"] {
+  border-radius: 0.375rem;
+  color: color-mix(in srgb, var(--foreground) 50%, transparent);
+  transition:
+    background-color var(--motion-feedback-duration) var(--motion-ease-out),
+    color var(--motion-feedback-duration) var(--motion-ease-out),
+    transform var(--motion-feedback-duration) var(--motion-ease-out);
+}
+[data-app-sidebar] [data-slot="sidebar-menu-button"][data-size="default"] {
+  padding-inline: 0.5rem;
+}
+[data-app-sidebar] [data-slot="sidebar-menu-button"]:hover,
+[data-app-sidebar] [data-slot="sidebar-menu-button"][data-popup-open] {
+  background-color: color-mix(in srgb, var(--foreground) 10%, transparent);
+  color: var(--foreground);
+}
+[data-app-sidebar] [data-slot="sidebar-menu-button"][data-active="true"] {
+  background-color: var(--glass-selection);
+  color: var(--foreground);
+}
+[data-app-sidebar] [data-slot="sidebar-menu-button"][data-size="icon"]:active {
+  transform: scale(0.97);
+}
+[data-app-sidebar] [data-slot="sidebar-menu-button"] > svg {
+  color: currentColor;
+  stroke-width: 1.75;
+}
+[data-app-sidebar] [data-slot="sidebar-menu-button"][data-size="default"] > svg {
+  opacity: 0.7;
+}
+
+/* Menus: 32px rows with 14px icons at 55%, a 5% highlight like a hover, and
+   10% for the current option in selects and comboboxes. */
+html
+  :is(
+    [data-slot="menu-item"],
+    [data-slot="menu-checkbox-item"],
+    [data-slot="menu-radio-item"],
+    [data-slot="menu-sub-trigger"]
+  )[data-highlighted] {
+  background-color: var(--glass-row-hover);
+}
+html :is([data-slot="select-item"], [data-slot="combobox-item"])[data-highlighted] {
+  background-color: var(--glass-selection);
+}
+:is(
+  [data-slot="menu-item"],
+  [data-slot="menu-checkbox-item"],
+  [data-slot="menu-radio-item"],
+  [data-slot="menu-sub-trigger"]
+) {
+  min-height: 2rem;
+}
+[data-slot="menu-item"] {
+  gap: 0.625rem;
+}
+[data-slot="menu-item"] > svg:not([class*="size-"]) {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+[data-slot="menu-item"]:not([data-variant="destructive"]) > svg:not([class*="text-"]) {
+  color: color-mix(in srgb, var(--foreground) 55%, transparent);
+  opacity: 1;
+}
+
+/* Popovers and tooltips: no inner top highlight. Tooltips take the popover
+   glass in dark and its 10% hairline in both themes. */
+[data-slot="popover-popup"]::before,
+[data-slot="tooltip-popup"]::before {
+  display: none;
+}
+[data-slot="tooltip-popup"] {
+  border-color: var(--glass-hairline);
+}
+.dark [data-slot="tooltip-popup"]:not(.dropdown-glass) {
+  background: linear-gradient(var(--glass-fill-faint), var(--glass-fill-faint)), var(--glass-smoke);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+
+/* Toasts: 12px corners on the same glass. */
+[data-slot="toast-viewport"] > .dropdown-glass {
+  border-radius: 0.75rem;
+}
+
+/* The command bar: 560px wide, 12% from the top, 32px rows, and the selection
+   fill on the row the palette tracks (the row sets bg-accent!, so the fill
+   goes through the variable). */
+@media (min-width: 640px) {
+  [data-slot="command-dialog-viewport"] {
+    padding-top: 12vh;
+  }
+}
+[data-slot="command-dialog-popup"] {
+  max-width: min(560px, calc(100vw - 24px));
+}
+[data-slot="command-item"] {
+  min-height: 2rem;
+}
+[data-slot="command-item"][data-active] {
+  --accent: var(--glass-selection);
+}
+
+/* Right panel: the surface content eases in beside the conversation when the
+   panel opens. */
+@keyframes linked-panel-reveal {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+[data-right-panel-surface-content] {
+  animation: linked-panel-reveal 240ms var(--motion-ease-out) 90ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-right-panel-surface-content] {
+    animation: none;
+  }
+  [data-app-sidebar] [data-slot="sidebar-menu-button"] {
+    transition: none;
+  }
+  [data-app-sidebar] [data-slot="sidebar-menu-button"][data-size="icon"]:active {
+    transform: none;
+  }
+}

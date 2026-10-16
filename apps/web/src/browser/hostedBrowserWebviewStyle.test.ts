@@ -79,6 +79,8 @@ describe("resolveHostedBrowserWebviewWrapperStyle", () => {
       zIndex: -1,
       pointerEvents: "none",
       visibility: "visible",
+      // The app's panes are translucent glass, so the guest must not show through them.
+      opacity: 0.01,
     });
   });
 

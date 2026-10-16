@@ -10,7 +10,11 @@ import {
 import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 
 import { isElectron } from "../env";
-import { getLocalStorageItem, removeLocalStorageItem } from "../hooks/useLocalStorage";
+import {
+  getLocalStorageItem,
+  removeLocalStorageItem,
+  setLocalStorageItem,
+} from "../hooks/useLocalStorage";
 import {
   isRichTextBoldShortcut,
   resolveShortcutCommand,
@@ -25,17 +29,18 @@ import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../termina
 import { resolveThreadRouteRef } from "../threadRoutes";
 import { cn, isMacPlatform } from "../lib/utils";
 import { primaryServerKeybindingsAtom } from "../state/server";
-import { useEnvironmentIdentificationMode, useLegacySidebarEnabled } from "../hooks/useSettings";
+import { useBackgroundFlipShortcut } from "../glass/useBackgroundFlipShortcut";
+import { useEnvironmentIdentificationMode } from "../hooks/useSettings";
 import {
   PanelAnimationSuppressionProvider,
   usePanelAnimationSettings,
   usePanelNavigationSuppression,
 } from "../panelAnimations";
-import LegacyThreadSidebar from "./LegacySidebar";
 import { useThreadVisitedMigration } from "../hooks/useThreadVisitedMigration";
-import ThreadSidebar from "./Sidebar";
-import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
+import { SettingsIconRail, SettingsSidebarNav } from "./settings/SettingsSidebarNav";
 import { SidebarBrandWidthProbe, SidebarChromeHeader } from "./sidebar/SidebarChrome";
+import { HistoryNavButtons } from "./sidebar/HistoryNavButtons";
+import { SidebarIconRail, SidebarNavPanel } from "./sidebar/SidebarIconRail";
 import { MainAppLocationTracker } from "./sidebar/mainAppLocation";
 import { useSidebarStageBackdropVariant } from "./SidebarStageBackdrop";
 import { useProjects } from "../state/entities";
@@ -78,6 +83,12 @@ function readInitialThreadSidebarWidth(): number {
     console.error("Could not read persisted thread sidebar width.", error);
     return resolveInitialThreadSidebarWidth(null, window.innerWidth);
   }
+}
+
+/** Collapsed on desktop, the sidebar shrinks to an icon rail instead of the full list. */
+function CollapsibleSidebarContent({ rail, children }: { rail: ReactNode; children: ReactNode }) {
+  const { isMobile, state } = useSidebar();
+  return !isMobile && state === "collapsed" ? rail : children;
 }
 
 function SidebarControl() {
@@ -133,6 +144,20 @@ function SidebarControl() {
       unsubscribe?.();
     };
   }, [keybindings, toggleSidebar, usagePageOpen]);
+
+  // On desktop the toggle lives in the sidebar header when open and atop the rail
+  // when collapsed; collapsed, the title bar carries back and forward here instead.
+  if (!isMobile) {
+    if (isSidebarVisible) return null;
+    return (
+      <div
+        className="fixed left-[var(--workspace-controls-left)] top-[var(--workspace-controls-top)] z-50 ml-px flex h-[var(--workspace-topbar-height)] items-center"
+        data-sidebar-control=""
+      >
+        <HistoryNavButtons />
+      </div>
+    );
+  }
 
   return (
     // The right-side layout controls carry mr-px (border compensation inside
@@ -227,9 +252,20 @@ function ProjectProjectionRetention() {
   return null;
 }
 
+// The sidebar starts collapsed to its icon rail (threads live in the title bar
+// tabs); whatever the user last chose is kept per device.
+const SIDEBAR_OPEN_STORAGE_KEY = "t3code:sidebar-open:v1";
+
 export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  const legacySidebarEnabled = useLegacySidebarEnabled();
+  useBackgroundFlipShortcut();
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => getLocalStorageItem(SIDEBAR_OPEN_STORAGE_KEY, Schema.Boolean) ?? false,
+  );
+  const handleSidebarOpenChange = (open: boolean) => {
+    setSidebarOpen(open);
+    setLocalStorageItem(SIDEBAR_OPEN_STORAGE_KEY, open, Schema.Boolean);
+  };
   const { active: panelAnimationsActive, durationMs: panelAnimationDurationMs } =
     usePanelAnimationSettings();
   // Settings routes show the settings nav in place of whichever thread
@@ -316,14 +352,15 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
       <SidebarProvider
         className="h-dvh! min-h-0!"
         data-panel-animations={routePanelAnimationsActive ? "true" : "false"}
-        defaultOpen
+        open={sidebarOpen}
+        onOpenChange={handleSidebarOpenChange}
         style={sidebarProviderStyle}
       >
         <SidebarBrandWidthProbe onWidthChange={setBrandWidth} />
         <ProjectProjectionRetention />
         <Sidebar
           side="left"
-          collapsible="offcanvas"
+          collapsible="icon"
           data-app-sidebar=""
           role="navigation"
           aria-label={isOnSettings ? "Settings" : "Threads"}
@@ -339,16 +376,19 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
           // The narrow-window sidebar is a sheet, portaled outside the provider's styles.
           style={windowControlsInsetStyle}
         >
-          {isOnSettings ? (
-            <>
-              <SidebarChromeHeader isElectron={isElectron} />
-              <SettingsSidebarNav pathname={pathname} />
-            </>
-          ) : legacySidebarEnabled ? (
-            <LegacyThreadSidebar />
-          ) : (
-            <ThreadSidebar />
-          )}
+          <CollapsibleSidebarContent
+            rail={isOnSettings ? <SettingsIconRail pathname={pathname} /> : <SidebarIconRail />}
+          >
+            {isOnSettings ? (
+              <>
+                <SidebarChromeHeader isElectron={isElectron} />
+                <SettingsSidebarNav pathname={pathname} />
+              </>
+            ) : (
+              // Threads live in the title bar tabs; the sidebar is navigation only.
+              <SidebarNavPanel />
+            )}
+          </CollapsibleSidebarContent>
           <SidebarRail onDoubleClick={resetSidebarWidth} />
         </Sidebar>
         {children}

@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "./glass/styles/home.css";
+@import "./glass/styles/composer.css";
+@import "./glass/styles/transcript.css";
+@import "./glass/styles/shell.css";
 
 @custom-variant dark (&:is(.dark, .dark *));
 @custom-variant light (&:not(.dark, .dark *));
@@ -183,6 +187,15 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --text-4xs--line-height: 1;
   --text-5xs: 0.4375rem;
   --text-5xs--line-height: 1;
+  /* Thread status on title bar tabs, readable in both themes. */
+  --color-status-working: #459bf7;
+  --color-status-done: light-dark(var(--color-teal-600), var(--color-teal-400));
+  --color-status-approval: light-dark(var(--color-amber-600), var(--color-amber-400));
+  --color-status-input: light-dark(var(--color-indigo-600), var(--color-indigo-400));
+  --color-status-failed: light-dark(var(--color-red-600), var(--color-red-400));
+  /* Title bar tab labels (13px). */
+  --text-tab: 0.8125rem;
+  --text-tab--line-height: 1.25;
   /* Motion. drawer is the decelerating curve for surfaces that slide or pop in
      (composer context, pills). */
   --inset-shadow-control-highlight: 0 1px rgb(255 255 255 / 16%);
@@ -2365,5 +2378,650 @@ code {
         3rem + var(--chat-lane-inset-end, 0px) - var(--chat-timeline-gutter, 0px)
       );
     }
+  }
+}
+
+/* Color, translucency, and chat backgrounds. The values come from
+   Appearance settings via glass/glassAppearance.ts. */
+:root {
+  --theme-hue: 240;
+  --theme-saturation: 0%;
+  --theme-dark-lightness: 0%;
+  --sidebar-opacity: 0.44;
+  --window-background-opacity: 0.4;
+  --chat-background-empty-opacity: 0.24;
+  --chat-background-session-opacity: 0.24;
+  --chat-background-position: 50% 50%;
+  --theme-base-dark: hsl(var(--theme-hue) var(--theme-saturation) var(--theme-dark-lightness));
+  --theme-base-light: hsl(var(--theme-hue) var(--theme-saturation) 97%);
+  --chat-background-fade: var(--background);
+}
+
+/* Color: hue and saturation tint every surface of the built-in theme, and
+   lightness moves the dark canvas. Imported themes keep their own palette. */
+html:not(.dark):is(:not([data-theme-id]), [data-theme-id=""]) {
+  --background: var(--theme-base-light);
+  --sidebar: color-mix(in srgb, var(--theme-base-light) 97%, black);
+}
+html:not(.dark):is(:not([data-theme-id]), [data-theme-id=""]) [data-app-sidebar] {
+  --background: var(--theme-base-light);
+  --sidebar: color-mix(in srgb, var(--theme-base-light) 97%, black);
+  --sidebar-stage-fade: var(--sidebar);
+}
+html.dark:is(:not([data-theme-id]), [data-theme-id=""]) {
+  --background: var(--theme-base-dark);
+}
+html.dark:is(:not([data-theme-id]), [data-theme-id=""]) [data-app-sidebar] {
+  --background: color-mix(in srgb, var(--theme-base-dark) 90%, black);
+  --card: color-mix(in srgb, var(--theme-base-dark) 90%, black);
+  --muted: color-mix(in srgb, var(--theme-base-dark) 96%, white);
+  --sidebar: color-mix(in srgb, var(--theme-base-dark) 90%, black);
+  --sidebar-stage-fade: var(--sidebar);
+}
+
+/* Translucency: on macOS desktop the window is transparent and WindowServer
+   blurs the desktop behind it. The body paints one tint (at a window opacity
+   of a 0.4 base plus the sidebar opacity over the rest), and the shell
+   surfaces above it go clear so the tint is never stacked. Floating glass
+   (composer, dialogs, menus, alerts) keeps a solid base so it stays readable.
+   Light and dark differ only in the tint lightness and the card washes. */
+html.electron.electron-mac {
+  --glass-base: var(--theme-base-light);
+  --glass-lightness: 97%;
+  --background: transparent;
+  --app-chrome-background: transparent;
+  --toolbar-background: transparent;
+  --card: rgb(255 255 255 / 45%);
+  --surface-raised: rgb(255 255 255 / 55%);
+  --sidebar: transparent;
+  --sidebar-stage-fade: transparent;
+  --surface-grain: none;
+  --chat-background-fade: var(--glass-base);
+  background-color: transparent !important;
+}
+html.electron.electron-mac.dark {
+  --glass-base: var(--theme-base-dark);
+  /* The dark popover mixes from the canvas, which glass makes clear. */
+  --popover: color-mix(in srgb, var(--theme-base-dark) 97%, var(--color-white));
+  --glass-lightness: var(--theme-dark-lightness);
+  --card: rgb(255 255 255 / 3%);
+  --surface-raised: rgb(255 255 255 / 4%);
+}
+html.electron.electron-mac body {
+  background-color: hsl(
+    var(--theme-hue) var(--theme-saturation) var(--glass-lightness) /
+      calc(
+        var(--window-background-opacity) + var(--sidebar-opacity) *
+          (1 - var(--window-background-opacity))
+      )
+  ) !important;
+}
+html.electron.electron-mac [data-app-sidebar] {
+  --background: transparent;
+  --card: transparent;
+  --muted: rgb(0 0 0 / 4%);
+  --sidebar: transparent;
+  --sidebar-stage-fade: transparent;
+}
+html.electron.electron-mac.dark [data-app-sidebar] {
+  --muted: rgb(255 255 255 / 4%);
+}
+/* Main pane glass off: the main pane stays solid and only the sidebar shows through. */
+html.electron.electron-mac:not(.glass-body) [data-slot="sidebar-inset"] {
+  background-color: var(--glass-base);
+}
+html.electron.electron-mac
+  :is(
+    .surface-glass,
+    .alert-glass,
+    .dialog-glass,
+    .dialog-backdrop,
+    [data-slot="popover-popup"],
+    [data-slot="dialog-popup"],
+    [data-server-browser-surface],
+    [data-mcp-app-fullscreen],
+    [data-slot="checkbox"],
+    [data-slot="radio"]
+  ) {
+  --background: var(--glass-base);
+}
+/* The switch thumb is the light knob on a colored track, never the canvas. */
+html.electron.electron-mac [data-slot="switch-thumb"] {
+  --background: var(--color-white);
+}
+
+/* Collapsed on desktop the sidebar is an icon rail under a title bar that runs
+   across it: the window controls, back and forward, then the page's own header.
+   The rail draws its own edge below the title bar, and the expand button is its
+   first icon. */
+@media (min-width: 768px) {
+  [data-slot="sidebar-wrapper"][data-sidebar-state="collapsed"] {
+    --workspace-titlebar-content-left: max(
+      0.75rem,
+      calc(
+        var(--workspace-controls-left) + 2 * var(--workspace-titlebar-control-size) + 0.125rem +
+          var(--workspace-titlebar-control-gap) - var(--sidebar-width-icon)
+      )
+    ) !important;
+  }
+  [data-slot="sidebar-wrapper"][data-sidebar-state="collapsed"] [data-slot="sidebar-container"] {
+    border-color: transparent;
+  }
+}
+
+/* Chat background image. The chat canvas carries data-session-empty, and
+   data-project-chat-background when its project overrides the global image. */
+.chat-pane-background::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--chat-background-image, none);
+  background-position: var(--chat-background-position, center);
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+/* While a background shows, the chat pane's own fills go clear so they do not
+   cover it; the shell behind the pane still paints the canvas color. */
+html.has-chat-background .chat-pane-background[data-project-chat-background="false"],
+.chat-pane-background[data-project-chat-background="true"] {
+  --background: transparent;
+}
+
+/* Text and icons drawn on the global artwork follow the art right behind them,
+   the way Apple's adaptive text does: dark ink over bright art, light ink over
+   dark art, each with a soft halo so busy art cannot swallow it. glass/artInk.ts
+   sets data-art-ink; the contrast colors are computed at the root, so they are
+   set here too. */
+[data-art-ink="dark"] {
+  --foreground: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.34 0 0);
+  --toolbar-foreground: oklch(0.2 0 0);
+  --toolbar-control-foreground: oklch(0.2 0 0);
+  --sidebar-foreground: oklch(0.2 0 0);
+  --sidebar-icon-color: oklch(0.34 0 0);
+  --contrast-foreground: oklch(0.2 0 0);
+  --contrast-muted-foreground: oklch(0.34 0 0);
+  --contrast-toolbar-foreground: oklch(0.2 0 0);
+  --contrast-toolbar-control-foreground: oklch(0.2 0 0);
+  --contrast-border: color-mix(in srgb, oklch(0.2 0 0) 22%, transparent);
+  color: var(--foreground);
+  text-shadow: 0 0 10px rgb(255 255 255 / 60%);
+}
+[data-art-ink="dark"] svg {
+  filter: drop-shadow(0 0 4px rgb(255 255 255 / 55%));
+}
+[data-art-ink="light"] {
+  --foreground: oklch(0.98 0 0);
+  --muted-foreground: oklch(0.88 0 0);
+  --toolbar-foreground: oklch(0.98 0 0);
+  --toolbar-control-foreground: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-icon-color: oklch(0.88 0 0);
+  --contrast-foreground: oklch(0.98 0 0);
+  --contrast-muted-foreground: oklch(0.88 0 0);
+  --contrast-toolbar-foreground: oklch(0.98 0 0);
+  --contrast-toolbar-control-foreground: oklch(0.98 0 0);
+  --contrast-border: color-mix(in srgb, oklch(0.98 0 0) 22%, transparent);
+  color: var(--foreground);
+  text-shadow: 0 0 10px rgb(0 0 0 / 55%);
+}
+[data-art-ink="light"] svg {
+  filter: drop-shadow(0 0 4px rgb(0 0 0 / 50%));
+}
+/* Haze: masked copies of the artwork, blurred progressively toward the bottom. */
+.gradient-blur-background {
+  --gradient-blur-soft: 7px;
+  --gradient-blur-strong: 18px;
+  --gradient-blur-soft-mask: linear-gradient(to bottom, transparent 18%, #000 60%);
+  --gradient-blur-strong-mask: linear-gradient(to bottom, transparent 28%, #000 76%);
+  --gradient-blur-overlay: linear-gradient(
+    to bottom,
+    transparent 16%,
+    color-mix(in srgb, var(--chat-background-fade) 26%, transparent) 38%,
+    color-mix(in srgb, var(--chat-background-fade) 55%, transparent) 55%,
+    color-mix(in srgb, var(--chat-background-fade) 78%, transparent) 75%
+  );
+  --gradient-blur-mask: linear-gradient(
+    to bottom,
+    #000 0 19%,
+    rgb(0 0 0 / 94%) 30%,
+    rgb(0 0 0 / 72%) 42%,
+    rgb(0 0 0 / 42%) 54%,
+    rgb(0 0 0 / 16%) 66%,
+    rgb(0 0 0 / 4%) 78%,
+    transparent 90%
+  );
+  overflow: hidden;
+  pointer-events: none;
+  background-image: var(--chat-background-image, none);
+  background-position: var(--chat-background-position, center);
+  background-size: cover;
+  background-repeat: no-repeat;
+  -webkit-mask-image: var(--gradient-blur-mask);
+  mask-image: var(--gradient-blur-mask);
+}
+.gradient-blur-preview {
+  --gradient-blur-soft: 2px;
+  --gradient-blur-strong: 5px;
+}
+.gradient-blur-background > span {
+  position: absolute;
+  inset: 0;
+  background-image: var(--chat-background-image, none);
+  background-position: var(--chat-background-position, center);
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+.gradient-blur-background-soft {
+  filter: blur(var(--gradient-blur-soft));
+  -webkit-mask-image: var(--gradient-blur-soft-mask);
+  mask-image: var(--gradient-blur-soft-mask);
+}
+.gradient-blur-background-strong {
+  filter: blur(var(--gradient-blur-strong));
+  -webkit-mask-image: var(--gradient-blur-strong-mask);
+  mask-image: var(--gradient-blur-strong-mask);
+}
+.gradient-blur-background::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--chat-background-fade) 36%, transparent) 0 1px,
+      transparent 1px 3px
+    ),
+    var(--gradient-blur-overlay);
+}
+.chat-pane-background > .gradient-blur-background {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 120ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* Keep the active transcript clear of the wide haze used by the empty hero. */
+.chat-pane-background[data-session-empty="false"] > .gradient-blur-background {
+  --gradient-blur-soft: 5px;
+  --gradient-blur-strong: 12px;
+  --gradient-blur-soft-mask: linear-gradient(to bottom, transparent 18%, #000 70%);
+  --gradient-blur-strong-mask: linear-gradient(to bottom, transparent 22%, #000 76%);
+  --gradient-blur-overlay: linear-gradient(
+    to bottom,
+    transparent 15%,
+    color-mix(in srgb, var(--chat-background-fade) 70%, transparent) 76%
+  );
+  --gradient-blur-mask: linear-gradient(to bottom, #000 0 18%, transparent 76%);
+}
+
+html.chat-background-gradient-blur
+  .chat-pane-background[data-project-chat-background="false"]
+  > .gradient-blur-background,
+.chat-pane-background[data-project-background-effect="gradient-blur"] > .gradient-blur-background {
+  display: block;
+}
+html.has-chat-background.chat-background-effect-ready.chat-background-gradient-blur
+  .chat-pane-background[data-project-chat-background="false"]
+  > .gradient-blur-background,
+.chat-pane-background[data-project-background-effect="gradient-blur"] > .gradient-blur-background {
+  opacity: var(--chat-background-empty-opacity);
+}
+html.has-chat-background.chat-background-effect-ready.chat-background-gradient-blur
+  .chat-pane-background[data-project-chat-background="false"][data-session-empty="false"]
+  > .gradient-blur-background,
+.chat-pane-background[data-project-background-effect="gradient-blur"][data-session-empty="false"]
+  > .gradient-blur-background {
+  opacity: var(--chat-background-session-opacity);
+}
+html.has-chat-background.chat-background-effect-ready:not(.chat-background-gradient-blur)
+  .chat-pane-background[data-project-chat-background="false"]::before,
+.chat-pane-background[data-project-chat-background="true"]:not(
+    [data-project-background-effect="gradient-blur"]
+  )::before {
+  opacity: var(--chat-background-empty-opacity);
+}
+html.has-chat-background.chat-background-effect-ready:not(.chat-background-gradient-blur)
+  .chat-pane-background[data-project-chat-background="false"][data-session-empty="false"]::before,
+.chat-pane-background[data-project-chat-background="true"]:not(
+    [data-project-background-effect="gradient-blur"]
+  )[data-session-empty="false"]::before {
+  opacity: var(--chat-background-session-opacity);
+}
+
+/* Sending the first message eases the background into its session look (or
+   out entirely when it only shows on empty sessions) alongside the composer. */
+.chat-pane-background[data-session-empty="false"]::before,
+.chat-pane-background[data-session-empty="false"] > .gradient-blur-background {
+  transition-duration: 600ms;
+}
+
+html.has-chat-background.chat-background-effect-ready:not(
+    .chat-background-gradient-blur
+  ).chat-background-empty-only
+  .chat-pane-background[data-project-chat-background="false"][data-session-empty="false"]::before,
+.chat-pane-background[data-project-chat-background="true"][data-project-background-scope="empty"][data-session-empty="false"]::before {
+  opacity: 0;
+}
+html.has-chat-background.chat-background-effect-ready.chat-background-gradient-blur.chat-background-empty-only
+  .chat-pane-background[data-project-chat-background="false"][data-session-empty="false"]
+  > .gradient-blur-background,
+.chat-pane-background[data-project-background-scope="empty"][data-session-empty="false"]
+  > .gradient-blur-background {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-pane-background::before,
+  .chat-pane-background > .gradient-blur-background {
+    transition-duration: 0ms !important;
+  }
+}
+
+/* Floating surfaces, composer, and motion, after the reference design: neutral
+   glass (the text color at a few percent over a strong blur, no theme tint),
+   hairline borders, and one motion language. Surfaces arrive with a short drift
+   and leave at once; feedback is quick. Light mode keeps solid fills. */
+:root {
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-surface-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-tab-ease: cubic-bezier(0.3333, 0.6667, 0.6667, 1);
+  --motion-feedback-duration: 120ms;
+  --motion-tab-duration: 200ms;
+  --glass-hairline: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --glass-fill-faint: color-mix(in srgb, var(--foreground) 2%, transparent);
+  /* Neutral smoke under floating glass, so busy artwork never reads through. */
+  --glass-smoke: color-mix(in srgb, var(--theme-base-dark) 55%, transparent);
+  --glass-row-hover: color-mix(in srgb, var(--foreground) 5%, transparent);
+  --glass-row-selected: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+/* Popovers, menus, selects, and comboboxes. */
+.dark .dropdown-glass {
+  background:
+    linear-gradient(var(--glass-fill-faint), var(--glass-fill-faint)), var(--glass-smoke) !important;
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-hairline);
+}
+/* A panel popover is a bare frame around its own card, so it is left out. */
+:is(
+  [data-slot="menu-popup"],
+  [data-slot="popover-popup"].dropdown-glass,
+  [data-slot="select-popup"] .dropdown-glass,
+  [data-slot="combobox-popup"]
+):not([data-slot="tooltip-popup"]) {
+  border-radius: 0.75rem;
+  box-shadow:
+    0 20px 25px -5px rgb(0 0 0 / 10%),
+    0 8px 10px -6px rgb(0 0 0 / 10%);
+}
+:is(
+  [data-slot="menu-item"],
+  [data-slot="menu-checkbox-item"],
+  [data-slot="menu-radio-item"],
+  [data-slot="menu-sub-trigger"],
+  [data-slot="select-item"],
+  [data-slot="combobox-item"]
+) {
+  border-radius: 0.5rem;
+  font-size: var(--text-tab);
+  transition: background-color var(--motion-feedback-duration) var(--motion-ease-out);
+}
+:is(
+  [data-slot="menu-item"],
+  [data-slot="menu-checkbox-item"],
+  [data-slot="menu-radio-item"],
+  [data-slot="menu-sub-trigger"],
+  [data-slot="select-item"],
+  [data-slot="combobox-item"]
+):hover {
+  background-color: var(--glass-row-hover);
+}
+:is(
+  [data-slot="menu-item"],
+  [data-slot="menu-checkbox-item"],
+  [data-slot="menu-radio-item"],
+  [data-slot="menu-sub-trigger"],
+  [data-slot="select-item"],
+  [data-slot="combobox-item"]
+)[data-highlighted] {
+  background-color: var(--glass-row-selected);
+}
+/* Destructive rows (Delete) keep their red when highlighted. */
+:is(
+    [data-slot="menu-item"],
+    [data-slot="menu-checkbox-item"],
+    [data-slot="menu-radio-item"],
+    [data-slot="menu-sub-trigger"],
+    [data-slot="select-item"],
+    [data-slot="combobox-item"]
+  )[data-highlighted]:not([data-variant="destructive"]) {
+  color: var(--foreground);
+}
+[data-slot="menu-separator"] {
+  background-color: var(--glass-hairline);
+}
+[data-slot="menu-shortcut"] {
+  font-size: var(--text-2xs);
+  color: color-mix(in srgb, var(--foreground) 40%, transparent);
+  letter-spacing: normal;
+}
+
+/* The command bar: a quiet glass panel over a clear scrim. */
+[data-slot="command-dialog-backdrop"] {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.dark [data-slot="command-dialog-popup"] {
+  background:
+    linear-gradient(
+      color-mix(in srgb, var(--foreground) 5%, transparent),
+      color-mix(in srgb, var(--foreground) 5%, transparent)
+    ),
+    var(--glass-smoke) !important;
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+[data-slot="command-dialog-popup"] {
+  border: 1px solid var(--glass-hairline) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: none !important;
+}
+[data-slot="command-item"] {
+  border-radius: 0.375rem;
+}
+[data-slot="command-item"][data-highlighted] {
+  background-color: var(--glass-row-selected) !important;
+}
+
+/* Dialogs and alert dialogs: a plain dark scrim and a soft glass panel. Media
+   dialogs (image and HTML previews) stay frameless. */
+:is([data-slot="dialog-backdrop"], [data-slot="alert-dialog-backdrop"]) {
+  background: rgb(0 0 0 / 40%) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+:is([data-slot="dialog-popup"], [data-slot="alert-dialog-popup"]).dialog-glass {
+  border-radius: 1rem;
+  border-color: color-mix(in srgb, var(--foreground) 7%, transparent);
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 25%);
+}
+.dark :is([data-slot="dialog-popup"], [data-slot="alert-dialog-popup"]).dialog-glass {
+  background: color-mix(in srgb, var(--theme-base-dark) 55%, transparent) !important;
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+
+/* The composer: neutral glass with a hairline that firms up on focus. The
+   blur is stronger than the reference's because the conversation scrolls
+   under this composer. */
+[data-slot="composer-shell"] {
+  --chat-composer-glass-surface: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--foreground) 3%, transparent),
+    color-mix(in srgb, var(--theme-base-dark) 20%, transparent)
+  );
+  --chat-composer-outline: var(--glass-hairline);
+  --chat-composer-highlight: transparent;
+  --glass-opacity: 100%;
+  --glass-blur: 24px;
+  --glass-saturation: 1;
+  --placeholder: color-mix(in srgb, var(--foreground) 40%, transparent);
+  --message-action: var(--color-white);
+  --message-action-foreground: var(--color-black);
+  --message-action-hover: color-mix(in srgb, var(--color-white) 90%, transparent);
+}
+[data-slot="composer-shell"]:focus-within {
+  --chat-composer-outline: color-mix(in srgb, var(--foreground) 20%, transparent);
+}
+html:not(.dark) [data-slot="composer-shell"] {
+  --chat-composer-glass-surface: var(--theme-base-light);
+  --message-action: var(--foreground);
+  --message-action-foreground: var(--theme-base-light);
+  --message-action-hover: color-mix(in srgb, var(--foreground) 90%, transparent);
+}
+html:not(.dark) [data-slot="composer-host"] {
+  box-shadow:
+    0 6px 24px color-mix(in srgb, var(--foreground) 9%, transparent),
+    0 2px 6px color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+
+/* Motion. Popups arrive from their anchor; nothing waits on a close. */
+@keyframes surface-open {
+  from {
+    opacity: 0;
+    transform: translate(var(--surface-shift, 0), var(--surface-lift, 0)) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes dialog-open {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes scrim-open {
+  from {
+    opacity: 0;
+  }
+}
+:is(
+  [data-slot="menu-popup"],
+  [data-slot="popover-popup"],
+  [data-slot="select-popup"],
+  [data-slot="combobox-popup"]
+) {
+  transition: none !important;
+}
+:is(
+  [data-slot="menu-popup"],
+  [data-slot="popover-popup"],
+  [data-slot="select-popup"],
+  [data-slot="combobox-popup"]
+):not([data-ending-style]) {
+  animation: surface-open 170ms var(--motion-surface-ease) backwards;
+}
+[data-side="bottom"] {
+  --surface-lift: -8px;
+}
+[data-side="top"] {
+  --surface-lift: 8px;
+}
+[data-side="right"] {
+  --surface-shift: -8px;
+}
+[data-side="left"] {
+  --surface-shift: 8px;
+}
+:is(
+  [data-slot="dialog-popup"],
+  [data-slot="alert-dialog-popup"],
+  [data-slot="command-dialog-popup"]
+) {
+  transition: none !important;
+}
+:is(
+  [data-slot="dialog-popup"],
+  [data-slot="alert-dialog-popup"],
+  [data-slot="command-dialog-popup"]
+):not([data-ending-style]) {
+  animation: dialog-open 200ms var(--motion-surface-ease) backwards;
+}
+:is(
+  [data-slot="dialog-backdrop"],
+  [data-slot="alert-dialog-backdrop"],
+  [data-slot="command-dialog-backdrop"]
+) {
+  transition: none !important;
+}
+:is(
+  [data-slot="dialog-backdrop"],
+  [data-slot="alert-dialog-backdrop"],
+  [data-slot="command-dialog-backdrop"]
+):not([data-ending-style]) {
+  animation: scrim-open 160ms ease-out both;
+}
+/* Tabs grow in and fold away along their width. */
+/* Width, not max-width: a tab has no max-width to animate from. */
+@keyframes tab-open {
+  from {
+    width: 0;
+    min-width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 14rem;
+    min-width: 7rem;
+    opacity: 1;
+  }
+}
+[data-tab-opening] {
+  overflow: hidden;
+  animation: tab-open var(--motion-tab-duration) var(--motion-tab-ease) backwards;
+}
+[data-tab-closing] {
+  overflow: hidden;
+  pointer-events: none;
+  width: 0 !important;
+  min-width: 0 !important;
+  opacity: 0;
+  transition:
+    width var(--motion-tab-duration) var(--motion-tab-ease),
+    min-width var(--motion-tab-duration) var(--motion-tab-ease),
+    opacity var(--motion-tab-duration) var(--motion-tab-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(
+    [data-slot="menu-popup"],
+    [data-slot="popover-popup"],
+    [data-slot="select-popup"],
+    [data-slot="combobox-popup"],
+    [data-slot="dialog-popup"],
+    [data-slot="alert-dialog-popup"],
+    [data-slot="command-dialog-popup"],
+    [data-slot="dialog-backdrop"],
+    [data-slot="alert-dialog-backdrop"],
+    [data-slot="command-dialog-backdrop"],
+    [data-tab-opening]
+  ) {
+    animation: none !important;
+  }
+  [data-tab-closing] {
+    display: none;
   }
 }

@@ -9,6 +9,7 @@ import {
 import { canSnooze, effectiveSnoozed } from "@t3tools/client-runtime/state/thread-settled";
 import {
   AuthOrchestrationOperateScope,
+  type ContextMenuItem,
   type ScopedThreadRef,
   type ThreadId,
 } from "@t3tools/contracts";
@@ -72,9 +73,9 @@ export function useThreadActionMenu(input: {
   readonly threadRef: ScopedThreadRef | null;
   /** Fallback for "Copy path" when the thread has no worktree. */
   readonly projectCwd: string | null;
-  readonly onStartRename: () => void;
+  readonly onStartRename: (threadRef: ScopedThreadRef) => void;
 }) {
-  const { threadRef, projectCwd, onStartRename } = input;
+  const { threadRef: hookThreadRef, projectCwd: hookProjectCwd, onStartRename } = input;
   const router = useRouter();
   const projects = useProjects();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
@@ -128,7 +129,18 @@ export function useThreadActionMenu(input: {
   });
 
   const openMenu = useCallback(
-    (position: { x: number; y: number }) => {
+    (
+      position: { x: number; y: number },
+      /** Another thread than the hook's, plus items of the caller's own (a tab's close actions). */
+      target?: {
+        readonly threadRef: ScopedThreadRef;
+        readonly projectCwd: string | null;
+        readonly extraItems?: ReadonlyArray<ContextMenuItem>;
+        readonly onExtra?: (id: string) => void;
+      },
+    ) => {
+      const threadRef = target?.threadRef ?? hookThreadRef;
+      const projectCwd = target ? target.projectCwd : hookProjectCwd;
       if (threadRef === null) return;
       void (async () => {
         const api = readLocalApi();
@@ -161,9 +173,24 @@ export function useThreadActionMenu(input: {
           supports,
           snoozePresets,
         });
-        const clicked = await settlePromise(() => api.contextMenu.show(items, position));
+        const extraItems = target?.extraItems ?? [];
+        const clicked = await settlePromise(() =>
+          api.contextMenu.show<string>(
+            [
+              ...items,
+              ...extraItems.map((item, index) =>
+                index === 0 ? { ...item, separatorBefore: true } : item,
+              ),
+            ],
+            position,
+          ),
+        );
         if (clicked._tag === "Failure" || clicked.value === null) return;
-        const action: ThreadActionMenuId = clicked.value;
+        if (extraItems.some((item) => item.id === clicked.value)) {
+          target?.onExtra?.(clicked.value);
+          return;
+        }
+        const action = clicked.value as ThreadActionMenuId;
         if (
           threadActionRequiresOperate(action) &&
           !readEnvironmentScope(threadRef.environmentId, AuthOrchestrationOperateScope)
@@ -251,7 +278,7 @@ export function useThreadActionMenu(input: {
             );
             return;
           case "rename":
-            onStartRename();
+            onStartRename(threadRef);
             return;
           case "regenerate-title":
             if (isRegeneratingTitle) return;
@@ -354,14 +381,14 @@ export function useThreadActionMenu(input: {
       markThreadUnread,
       onStartRename,
       pinThread,
-      projectCwd,
+      hookProjectCwd,
       projectGroupingSettings,
       projects,
       router,
       setThreadAutoSettle,
       settleThread,
       snoozeThread,
-      threadRef,
+      hookThreadRef,
       timestampFormat,
       unsettleThread,
       unsnoozeThread,

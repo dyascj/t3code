@@ -28,7 +28,8 @@ export function ContextWindowMeter(props: {
   const { usage, modelDisplayName, onCompact, compactDisabled, compactDisabledReason } = props;
   const usedPercentage = formatPercentage(usage.usedPercentage);
   const normalizedPercentage = Math.max(0, Math.min(100, usage.usedPercentage ?? 0));
-  const radius = 9.75;
+  // A 14px ring with a 2px stroke, after MonoCode's context meter.
+  const radius = 6;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - normalizedPercentage / 100);
   const totalProcessedTokens = usage.totalProcessedTokens ?? null;
@@ -36,7 +37,9 @@ export function ContextWindowMeter(props: {
   const isOverloaded = normalizedPercentage > 90;
   const usageColor = isOverloaded
     ? "var(--color-error)"
-    : "color-mix(in oklab, var(--color-muted-foreground) 72%, transparent)";
+    : normalizedPercentage >= 75
+      ? "var(--color-warning)"
+      : "color-mix(in srgb, var(--color-foreground) 45%, transparent)";
 
   return (
     <Popover>
@@ -48,34 +51,35 @@ export function ContextWindowMeter(props: {
           <Button
             size="icon-sm"
             variant="ghost-muted"
-            className="size-7"
+            className="size-7 sm:size-6.5"
             aria-label={
               usage.maxTokens !== null && usedPercentage
                 ? `Context window ${usedPercentage} used`
                 : `Context window ${formatContextWindowTokens(usage.usedTokens)} tokens used`
             }
           >
-            <span className="relative flex size-5 items-center justify-center">
+            <span className="relative flex size-3.5 items-center justify-center">
               <svg
-                viewBox="0 0 24 24"
+                viewBox="0 0 14 14"
                 className="-rotate-90 absolute inset-0 size-full transform-gpu mx-0!"
                 aria-hidden="true"
               >
                 <circle
-                  cx="12"
-                  cy="12"
-                  r={radius}
-                  fill="none"
-                  className="stroke-muted-foreground/24"
-                  strokeWidth="3"
-                />
-                <circle
-                  cx="12"
-                  cy="12"
+                  cx="7"
+                  cy="7"
                   r={radius}
                   fill="none"
                   stroke={usageColor}
-                  strokeWidth="3"
+                  strokeOpacity={0.25}
+                  strokeWidth="2"
+                />
+                <circle
+                  cx="7"
+                  cy="7"
+                  r={radius}
+                  fill="none"
+                  stroke={usageColor}
+                  strokeWidth="2"
                   strokeLinecap="round"
                   strokeDasharray={circumference}
                   strokeDashoffset={dashOffset}

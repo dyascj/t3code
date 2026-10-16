@@ -66,6 +66,7 @@ import {
   FolderGit2Icon,
   FolderIcon,
   FolderPlusIcon,
+  HouseIcon,
   MessageSquareDashedIcon,
   LinkIcon,
   MessageSquareIcon,
@@ -1301,13 +1302,9 @@ function OpenCommandPaletteDialog(props: {
     );
     if (scratchTargetEnvironmentId === null) return projectItems;
 
-    // "No project" goes right after the current project: visible without
-    // scrolling past every project, while Enter still starts in the current
-    // one. When the current thread has no project, it is the current entry and
-    // goes first. It keeps its own shortcut, so the projects' mod+1..9 hold.
-    const noProjectIndex = pickerProjects[0] !== undefined && isScratch(pickerProjects[0]) ? 0 : 1;
+    // "No project" always leads, then the current project, then the rest. It
+    // keeps its own shortcut, so the projects' mod+1..9 hold.
     return [
-      ...projectItems.slice(0, noProjectIndex),
       {
         kind: "action" as const,
         value: "new-thread-in:no-project",
@@ -1317,7 +1314,7 @@ function OpenCommandPaletteDialog(props: {
         shortcutCommand: "chat.newWithoutProject" as const,
         run: () => startScratchThread(scratchTargetEnvironmentId),
       },
-      ...projectItems.slice(noProjectIndex),
+      ...projectItems,
     ];
   }, [
     contextualProjectRef,
@@ -1796,7 +1793,7 @@ function OpenCommandPaletteDialog(props: {
     setNewProjectFlow(null);
     setViewStack([]);
     setQuery("");
-    // projectThreadItems already lists the current project first.
+    // projectThreadItems already lists No project first, then the current project.
     pushPaletteView({
       addonIcon: <SquarePenIcon className={ADDON_ICON_CLASS} />,
       groups: [{ value: "projects", label: "Projects", items: projectThreadItems }],
@@ -2220,6 +2217,17 @@ function OpenCommandPaletteDialog(props: {
       },
     });
   }
+
+  actionItems.push({
+    kind: "action",
+    value: "action:home",
+    searchTerms: ["home", "dashboard", "overview", "github", "contributions", "streak"],
+    title: "Go home",
+    icon: <HouseIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/" });
+    },
+  });
 
   actionItems.push({
     kind: "action",

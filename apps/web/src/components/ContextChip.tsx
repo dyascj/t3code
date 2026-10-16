@@ -42,7 +42,8 @@ const contextChipVariants = cva(
         "pr-draft": "[--context-chip-accent:oklch(0.62_0.02_259)]",
         "pr-merged": "[--context-chip-accent:oklch(0.62_0.16_292)]",
         "pr-closed": "[--context-chip-accent:oklch(0.62_0.16_16)]",
-        skill: "[--context-chip-accent:oklch(0.62_0.16_322)]",
+        // Gold, after MonoCode's skill color.
+        skill: "[--context-chip-accent:oklch(0.62_0.13_92)]",
         thread: "[--context-chip-accent:oklch(0.62_0.12_190)]",
         citation: "[--context-chip-accent:oklch(0.62_0.16_259)]",
       },

@@ -287,7 +287,7 @@ export function QueuedRunsControl({
                   aria-current={isEditing ? "true" : undefined}
                   className={cn(
                     "relative rounded-sm",
-                    isEditing && "bg-accent text-accent-foreground",
+                    isEditing && "bg-foreground/10",
                     dragState !== null && dragState.runId === item.runId && "opacity-50",
                   )}
                   draggable={rowDraggable}
@@ -326,14 +326,14 @@ export function QueuedRunsControl({
                   {item.serverIndex !== null && dragState?.insertIndex === item.serverIndex ? (
                     <span
                       aria-hidden
-                      className="pointer-events-none absolute inset-x-0 top-0 h-0.5 rounded bg-primary/70"
+                      className="pointer-events-none absolute inset-x-0 top-0 h-0.5 rounded bg-foreground/40"
                     />
                   ) : null}
                   {item.serverIndex === queued.length - 1 &&
                   dragState?.insertIndex === queued.length ? (
                     <span
                       aria-hidden
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 rounded bg-primary/70"
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 rounded bg-foreground/40"
                     />
                   ) : null}
                   <ComposerBanner.Icon aria-hidden={false}>
@@ -376,7 +376,7 @@ export function QueuedRunsControl({
                         {item.thumbnails.map((thumbnail) => (
                           <span
                             key={thumbnail.key}
-                            className="size-4 overflow-hidden rounded border border-border/70 bg-background"
+                            className="size-4 overflow-hidden rounded border border-foreground/10 bg-foreground/5"
                           >
                             {thumbnail.url ? (
                               <img
@@ -387,7 +387,7 @@ export function QueuedRunsControl({
                             ) : (
                               <span
                                 aria-label={thumbnail.name}
-                                className="block size-full bg-muted/60"
+                                className="block size-full bg-foreground/10"
                               />
                             )}
                           </span>

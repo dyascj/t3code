@@ -742,7 +742,7 @@ export function ServerBrowserSurface(props: {
     >
       <div
         className={cn(
-          "visible relative z-20 flex shrink-0 items-center justify-between gap-2 border-border bg-background px-2 py-1",
+          "visible relative z-20 flex shrink-0 items-center justify-between gap-2 border-foreground/10 bg-background px-2 py-1",
           controlPosition === "bottom" ? "order-last border-t" : "border-b",
         )}
       >
@@ -814,7 +814,7 @@ export function ServerBrowserSurface(props: {
         />
         {fileChooser && control?.controller === "you" ? (
           <div
-            className="absolute inset-x-2 top-2 z-10 flex flex-col gap-2 rounded-lg border border-border bg-background p-3 shadow-lg"
+            className="absolute inset-x-2 top-2 z-10 flex flex-col gap-2 rounded-xl border border-foreground/10 bg-background p-3"
             role="dialog"
             aria-label="Choose files for the page"
           >
@@ -845,7 +845,7 @@ export function ServerBrowserSurface(props: {
         ) : null}
         {control?.dialog ? (
           <div
-            className="absolute inset-x-2 top-2 z-10 flex flex-col gap-2 rounded-lg border border-border bg-background p-3 shadow-lg"
+            className="absolute inset-x-2 top-2 z-10 flex flex-col gap-2 rounded-xl border border-foreground/10 bg-background p-3"
             role="dialog"
             aria-label="Browser dialog"
           >

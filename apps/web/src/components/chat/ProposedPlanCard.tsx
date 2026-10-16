@@ -1,5 +1,13 @@
 import { proposedPlanTitle, stripDisplayedPlanMarkdown } from "@t3tools/shared/proposedPlanText";
-import { memo, useCallback, useState, useId } from "react";
+import {
+  memo,
+  useCallback,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useFindRevealRef } from "./markdownFindContext";
 import {
   isAtomCommandInterrupted,
@@ -38,7 +46,76 @@ import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 
+const COLLAPSED_PLAN_FADE_MASK = "linear-gradient(to bottom, black calc(100% - 6rem), transparent)";
+const PLAN_STEP_START_MS = 250;
+const PLAN_STEP_STAGGER_MS = 170;
+const PLAN_STEP_CHECK_PATH = "M3.2 6.3 5.1 8.2 8.8 4.2";
+
+/** Plan mode flourish: numbered steps rise through a fresh plan and tick themselves off. */
+function PlanStepsBurst() {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [stepCount, setStepCount] = useState(0);
+  const [embers] = useState(() =>
+    Array.from({ length: 6 }, (_, index) => ({
+      x: Math.min(95, Math.max(5, ((index + Math.random()) / 6) * 100)),
+      size: 2.5 + Math.random() * 2,
+      delay: PLAN_STEP_START_MS + Math.random() * 1150,
+      duration: 1000 + Math.random() * 600,
+      drift: (Math.random() - 0.5) * 20,
+    })),
+  );
+  useLayoutEffect(() => {
+    const width = ref.current?.getBoundingClientRect().width ?? 0;
+    setStepCount(Math.max(2, Math.min(6, Math.floor(width / 64))));
+  }, []);
+  return (
+    <span aria-hidden ref={ref} className="plan-steps">
+      {Array.from({ length: stepCount }, (_, index) => (
+        <span
+          key={index}
+          className="plan-step"
+          style={
+            {
+              "--x": `${((index + 0.5) / stepCount) * 100}%`,
+              "--delay": `${PLAN_STEP_START_MS + index * PLAN_STEP_STAGGER_MS}ms`,
+              "--duration": "1650ms",
+              "--drift": `${index % 2 === 0 ? -8 : 8}px`,
+            } as CSSProperties
+          }
+        >
+          <span className="plan-step-dot">
+            <span className="plan-step-number">{index + 1}</span>
+            <svg viewBox="0 0 12 12" className="plan-step-check">
+              <path d={PLAN_STEP_CHECK_PATH} />
+            </svg>
+          </span>
+        </span>
+      ))}
+      {stepCount > 0
+        ? embers.map((ember, index) => (
+            <span
+              key={`ember-${index}`}
+              className="plan-step-ember"
+              style={
+                {
+                  "--x": `${ember.x}%`,
+                  "--size": `${ember.size}px`,
+                  "--delay": `${ember.delay}ms`,
+                  "--duration": `${ember.duration}ms`,
+                  "--drift": `${ember.drift}px`,
+                } as CSSProperties
+              }
+            >
+              <span className="plan-step-ember-glyph" />
+            </span>
+          ))
+        : null}
+    </span>
+  );
+}
+
 export const ProposedPlanCard = memo(function ProposedPlanCard({
+  celebrate = false,
   planMarkdown,
   environmentId,
   threadRef,
@@ -46,6 +123,8 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
   workspaceRoot,
   findActive = false,
 }: {
+  /** Plays the one-shot plan flourish; the timeline sets it for a plan that just arrived. */
+  celebrate?: boolean;
   planMarkdown: string;
   environmentId: EnvironmentId;
   threadRef?: ScopedThreadRef | undefined;
@@ -161,7 +240,8 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
   };
 
   return (
-    <div className="rounded-3xl border border-border/80 bg-card/70 p-4 sm:p-5">
+    <div className="relative rounded-xl border border-foreground/10 bg-foreground/[0.03] p-4">
+      {celebrate ? <PlanStepsBurst /> : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <Badge variant="secondary">Plan</Badge>
@@ -195,6 +275,11 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
         <div
           ref={findRevealRef}
           className={cn("relative", isCollapsed && "max-h-104 overflow-hidden")}
+          style={
+            isCollapsed
+              ? { WebkitMaskImage: COLLAPSED_PLAN_FADE_MASK, maskImage: COLLAPSED_PLAN_FADE_MASK }
+              : undefined
+          }
           data-thread-find-text="true"
           data-thread-find-fold={isCollapsed ? "" : undefined}
         >
@@ -217,9 +302,6 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
               headingLevelOffset={3}
             />
           )}
-          {isCollapsed ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-card/95 via-card/80 to-transparent" />
-          ) : null}
         </div>
         {canCollapse ? (
           <div className="mt-4 flex justify-center">

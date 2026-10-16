@@ -469,7 +469,7 @@ export function McpAppFrame(props: {
   // timeline does not jump, and says how to bring it back.
   if (closed) {
     return (
-      <div className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-muted-foreground text-xs">
+      <div className="flex items-center justify-between gap-2 rounded-lg border border-foreground/10 px-3 py-2 text-muted-foreground text-xs">
         <span>The {app.server} app was closed</span>
         <Button
           size="xs"
@@ -503,7 +503,7 @@ export function McpAppFrame(props: {
         data-mcp-app-fullscreen={fullscreen ? "" : undefined}
         className={cn(
           "relative size-full overflow-hidden",
-          app.prefersBorder === true && !fullscreen && "rounded-lg border border-border",
+          app.prefersBorder === true && !fullscreen && "rounded-lg border border-foreground/10",
           fullscreen
             ? "fixed inset-0 m-0 flex h-dvh max-h-none w-dvw max-w-none flex-col border-0 bg-background p-0"
             : // A closed popover is hidden; inline, the box is a plain block.
@@ -511,7 +511,7 @@ export function McpAppFrame(props: {
         )}
       >
         {fullscreen ? (
-          <div className="flex h-10 shrink-0 items-center justify-between border-border border-b px-3 text-sm">
+          <div className="flex h-10 shrink-0 items-center justify-between border-foreground/10 border-b px-3 text-sm">
             <span className="truncate">{app.server}</span>
             <Button
               aria-label="Exit full screen"

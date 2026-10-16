@@ -23,7 +23,7 @@ export function ThreadDetailsSection({
       {...props}
       aria-labelledby={showHeading ? headingId : undefined}
       aria-label={showHeading ? undefined : title}
-      className={cn("px-2 pt-2 pb-2.5", separated && "border-t border-border/65")}
+      className={cn("px-2 pt-2 pb-2.5", separated && "border-t border-foreground/10")}
     >
       <div
         className={cn(

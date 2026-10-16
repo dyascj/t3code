@@ -614,7 +614,7 @@ function WebhookDeliveriesDialog({
                 <li key={delivery.id}>
                   <button
                     type="button"
-                    className="flex w-full flex-wrap items-center gap-2 py-2 text-left text-sm hover:bg-accent/40"
+                    className="flex w-full flex-wrap items-center gap-2 py-2 text-left text-sm hover:bg-foreground/5"
                     onClick={() => setSelectedId(delivery.id)}
                   >
                     <Badge variant={deliveryOutcomeVariant(delivery.outcome)}>
@@ -662,7 +662,7 @@ function DeliveryBlock({ title, children }: { title: string; children: ReactNode
   return (
     <div className="space-y-1">
       <Label>{title}</Label>
-      <pre className="max-h-64 overflow-auto rounded-md bg-muted p-2 text-xs whitespace-pre-wrap break-all">
+      <pre className="max-h-64 overflow-auto rounded-md bg-foreground/5 p-2 text-xs whitespace-pre-wrap break-all">
         {children}
       </pre>
     </div>

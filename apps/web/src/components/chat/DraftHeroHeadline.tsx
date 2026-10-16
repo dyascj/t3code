@@ -316,7 +316,7 @@ export function DraftHeroHeadline({
           <TooltipPopup side="top">{activeProjectDisplayName}</TooltipPopup>
         ) : null}
       </Tooltip>
-      <ComboboxPopup align="center" className="w-72 overflow-hidden">
+      <ComboboxPopup align="start" className="w-72 overflow-hidden">
         <ComboboxSearchInput
           aria-label="Search projects"
           placeholder="Search projects..."
@@ -370,7 +370,7 @@ export function DraftHeroHeadline({
   const headingLabel = isScratchDraft
     ? "What should we work on?"
     : hasResolvedProject
-      ? `What should we build in ${activeProjectDisplayName}?`
+      ? `What should we work on in ${activeProjectDisplayName}?`
       : canChooseProject
         ? `${activeProjectDisplayName ?? "Choose a project"} to start`
         : "Add a project to start";
@@ -403,15 +403,12 @@ export function DraftHeroHeadline({
     ) : null;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col items-center">
-      <h1
-        aria-label={headingLabel}
-        className="w-full text-center font-normal text-2xl text-foreground tracking-tight sm:text-3xl"
-      >
+    <div className="flex w-full flex-col items-start px-2.5">
+      <h1 aria-label={headingLabel} className="w-full font-normal text-foreground text-lg">
         {isScratchDraft ? (
           <>What should we work on?</>
         ) : hasResolvedProject ? (
-          <>What should we build in {projectSelector}?</>
+          <>What should we work on in {projectSelector}?</>
         ) : canChooseProject ? (
           <>{projectSelector} to start</>
         ) : (

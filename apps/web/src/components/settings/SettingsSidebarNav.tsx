@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   ArchiveIcon,
+  ArrowLeftIcon,
   BlocksIcon,
   BotIcon,
   createLucideIcon,
@@ -21,8 +22,10 @@ import {
   KeyboardIcon,
   Link2Icon,
   PaletteIcon,
+  PanelLeftIcon,
   SearchIcon,
   Settings2Icon,
+  SparklesIcon,
   XIcon,
 } from "lucide-react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
@@ -40,6 +43,9 @@ import {
   SidebarInput,
 } from "../ui/sidebar";
 import { SidebarUtilityMenu } from "../sidebar/SidebarChrome";
+import { useNavigateToMainApp } from "../sidebar/mainAppLocation";
+import { isElectron } from "../../env";
+import { cn } from "../../lib/utils";
 import { scrollToSettingsTarget } from "./settingsLayout";
 import {
   searchSettings,
@@ -84,6 +90,7 @@ const SETTINGS_SECTION_ICONS: Readonly<
   "/settings/keybindings": KeyboardIcon,
   "/settings/snap-shot": SnapShotIcon,
   "/settings/providers": BotIcon,
+  "/settings/skills": SparklesIcon,
   "/settings/integrations": BlocksIcon,
   "/settings/scheduled-tasks": CalendarClockIcon,
   "/settings/source-control": GitBranchIcon,
@@ -376,6 +383,87 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
           </Suspense>
         </div>
       </SidebarFooter>
+    </>
+  );
+}
+
+/** Settings with the sidebar collapsed: one icon per section, and a way back. */
+export function SettingsIconRail({ pathname }: { pathname: string }) {
+  const navigate = useNavigate();
+  const { toggleSidebar } = useSidebar();
+  const navigateToMainApp = useNavigateToMainApp();
+  const currentSearch = useLocation({ select: (location) => location.search });
+  const scopeSearch = useMemo(() => validateSettingsScopeSearch(currentSearch), [currentSearch]);
+  const navItems = SETTINGS_NAV_ITEMS.filter(
+    (item) => item.to !== "/settings/projects" || isSettingsOverviewVisible(scopeSearch),
+  );
+  return (
+    <>
+      {/* The titlebar row stays clear for the window controls and the expand button. */}
+      <div
+        className={cn(
+          "h-[var(--workspace-topbar-height)] shrink-0 border-b border-border",
+          isElectron && "drag-region",
+        )}
+      />
+      {/* The rail's edge starts below the title bar, which runs across it. */}
+      <div className="flex min-h-0 flex-1 flex-col border-r border-border">
+        <SidebarContent className="items-center">
+          <SidebarMenu className="items-center">
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                size="icon"
+                tooltip="Expand sidebar"
+                aria-label="Expand sidebar"
+                onClick={toggleSidebar}
+              >
+                <PanelLeftIcon />
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                size="icon"
+                tooltip="Back"
+                aria-label="Back"
+                onClick={() => void navigateToMainApp()}
+              >
+                <ArrowLeftIcon />
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+          <div className="my-1 h-px w-6 shrink-0 bg-sidebar-border" />
+          <SidebarMenu className="items-center">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive =
+                (item.to === "/settings/general" &&
+                  pathname === "/settings/open-source-licenses") ||
+                pathname === item.to ||
+                pathname.startsWith(`${item.to}/`);
+              return (
+                <SidebarMenuItem key={item.to}>
+                  <SidebarMenuButton
+                    size="icon"
+                    isActive={isActive}
+                    tooltip={item.label}
+                    aria-label={item.label}
+                    onClick={() =>
+                      void navigate({
+                        to: item.to,
+                        hash: "",
+                        replace: true,
+                        hashScrollIntoView: false,
+                      })
+                    }
+                  >
+                    <Icon />
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
+          </SidebarMenu>
+        </SidebarContent>
+      </div>
     </>
   );
 }

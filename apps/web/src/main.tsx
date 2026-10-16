@@ -6,6 +6,7 @@ import "./index.css";
 
 import { prepareProviderAuthDelivery } from "./providerAuthDelivery";
 import { isElectron } from "./env";
+import { initGlassAppearance } from "./glass/glassAppearance";
 import { hasCloudPublicConfig } from "./cloud/publicConfig";
 import { getRouter } from "./router";
 import {
@@ -26,6 +27,7 @@ if (isElectron) {
   syncDocumentElectronPlatformClasses(navigator.platform);
   syncDocumentWindowControlsOverlayClass();
 }
+initGlassAppearance();
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
 

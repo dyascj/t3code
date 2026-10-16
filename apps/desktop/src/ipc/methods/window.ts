@@ -35,6 +35,7 @@ import * as ElectronMenu from "../../electron/ElectronMenu.ts";
 import * as ElectronShell from "../../electron/ElectronShell.ts";
 import * as ElectronTheme from "../../electron/ElectronTheme.ts";
 import * as ElectronWindow from "../../electron/ElectronWindow.ts";
+import * as MacWindowGlass from "../../electron/MacWindowGlass.ts";
 import * as Electron from "electron";
 import * as MacPermissions from "../../permissions/MacPermissions.ts";
 import { safariPermissionCheck } from "../../preview/BrowserImport/SafariPermission.ts";
@@ -285,6 +286,19 @@ export const setTheme = DesktopIpc.makeIpcMethod({
   handler: Effect.fn("desktop.ipc.window.setTheme")(function* (theme) {
     const electronTheme = yield* ElectronTheme.ElectronTheme;
     yield* electronTheme.setSource(theme);
+  }),
+});
+
+export const setWindowBlurRadius = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.SET_WINDOW_BLUR_RADIUS_CHANNEL,
+  payload: Schema.Number,
+  result: Schema.Void,
+  handler: Effect.fn("desktop.ipc.window.setWindowBlurRadius")(function* (radius) {
+    if ((yield* HostProcess.Platform) !== "darwin") return;
+    const electronWindow = yield* ElectronWindow.ElectronWindow;
+    const window = yield* electronWindow.currentMainOrFirst;
+    if (Option.isNone(window)) return;
+    yield* Effect.promise(() => MacWindowGlass.setMacWindowBlurRadius(window.value, radius));
   }),
 });
 

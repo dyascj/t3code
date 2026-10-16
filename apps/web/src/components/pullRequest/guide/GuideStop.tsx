@@ -194,14 +194,14 @@ export function GuideStop({
               {stop.excerpts.length > 0 ? "Also in this stop" : "Files in this stop"}
             </h3>
             <DiffWorkerPoolProvider>
-              <ul className="flex flex-col overflow-hidden rounded-lg border border-border/60">
+              <ul className="flex flex-col overflow-hidden rounded-xl border border-foreground/10">
                 {otherFiles.map((file) => {
                   const diff = files.get(file.path);
                   const stat = diff === undefined ? null : getDiffLineStat([diff]);
                   return (
-                    <li key={file.path} className="border-border/60 not-first:border-t">
+                    <li key={file.path} className="border-foreground/10 not-first:border-t">
                       <Collapsible>
-                        <CollapsibleTrigger className="group flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left text-xs outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">
+                        <CollapsibleTrigger className="group flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left text-xs outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">
                           <ChevronRightIcon
                             aria-hidden
                             className="size-3.5 shrink-0 text-muted-foreground group-data-panel-open:rotate-90"
@@ -263,7 +263,7 @@ export function GuideStop({
                     key={question}
                     type="button"
                     onClick={() => onAsk(question)}
-                    className="flex min-w-0 items-start gap-2 rounded-lg border border-border/60 px-3 py-1.5 text-left text-sm text-foreground outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                    className="flex min-w-0 items-start gap-2 rounded-lg border border-foreground/10 px-3 py-1.5 text-left text-sm text-foreground outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
                     <MessageCircleQuestionIcon
                       aria-hidden

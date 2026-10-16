@@ -14,6 +14,7 @@ export interface HostedBrowserWebviewWrapperStyle {
   readonly pointerEvents: "auto" | "none";
   readonly borderRadius?: number;
   readonly visibility?: "hidden" | "visible";
+  readonly opacity?: number;
 }
 
 export const HIDDEN_BROWSER_WEBVIEW_OFFSET = -100_000;
@@ -60,6 +61,10 @@ export function resolveHostedBrowserWebviewWrapperStyle(input: {
       zIndex: -1,
       pointerEvents: "none",
       visibility: "visible",
+      // The app's panes are translucent glass, so a guest behind them shows
+      // through and flashes as an agent starts and stops. Nearly transparent
+      // still composites (zero opacity can let Chromium skip drawing it).
+      opacity: 0.01,
     };
   }
 

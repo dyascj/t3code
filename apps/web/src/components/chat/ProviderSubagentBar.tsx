@@ -53,7 +53,7 @@ export function ProviderSubagentBar(props: {
   }, [live, status]);
 
   return (
-    <div className="flex min-h-12 items-center gap-3 rounded-3xl py-2 ps-5 pe-2 text-sm">
+    <div className="flex min-h-12 items-center gap-3 rounded-lg py-2 ps-5 pe-2 text-sm">
       <span className="flex min-w-0 items-center gap-2">
         {props.provider ? (
           <ProviderInstanceIcon

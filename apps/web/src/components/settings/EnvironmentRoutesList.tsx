@@ -170,7 +170,7 @@ function SortableRouteRow({
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
         "flex items-center gap-2 py-2",
-        isDragging && "relative z-10 rounded-md bg-background shadow-md",
+        isDragging && "surface-glass relative z-10 rounded-md ring-1 ring-foreground/10",
       )}
     >
       <div className="min-w-0 flex-1">
