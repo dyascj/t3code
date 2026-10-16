@@ -2626,17 +2626,24 @@ html.has-chat-background .chat-pane-background[data-project-chat-background="fal
   -webkit-mask-image: var(--gradient-blur-strong-mask);
   mask-image: var(--gradient-blur-strong-mask);
 }
+/* The texture comes from the chosen effect; the haze only darkens as it fades. */
 .gradient-blur-background::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image:
-    repeating-linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--chat-background-fade) 36%, transparent) 0 1px,
-      transparent 1px 3px
-    ),
-    var(--gradient-blur-overlay);
+  background-image: var(--gradient-blur-overlay);
+}
+/* Fade out: no blurred copies, just the fade. Blur: the blurred copies at full
+   strength, with no fade or darkening. Fade to blur keeps all of it. */
+html[data-haze-style="fade"] .gradient-blur-background > span {
+  display: none;
+}
+html[data-haze-style="blur"] .gradient-blur-background {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+html[data-haze-style="blur"] .gradient-blur-background::after {
+  content: none;
 }
 .chat-pane-background > .gradient-blur-background {
   display: none;
@@ -2663,33 +2670,33 @@ html.has-chat-background .chat-pane-background[data-project-chat-background="fal
 html.chat-background-gradient-blur
   .chat-pane-background[data-project-chat-background="false"]
   > .gradient-blur-background,
-.chat-pane-background[data-project-background-effect="gradient-blur"] > .gradient-blur-background {
+.chat-pane-background[data-project-background-haze="true"] > .gradient-blur-background {
   display: block;
 }
 html.has-chat-background.chat-background-effect-ready.chat-background-gradient-blur
   .chat-pane-background[data-project-chat-background="false"]
   > .gradient-blur-background,
-.chat-pane-background[data-project-background-effect="gradient-blur"] > .gradient-blur-background {
+.chat-pane-background[data-project-background-haze="true"] > .gradient-blur-background {
   opacity: var(--chat-background-empty-opacity);
 }
 html.has-chat-background.chat-background-effect-ready.chat-background-gradient-blur
   .chat-pane-background[data-project-chat-background="false"][data-session-empty="false"]
   > .gradient-blur-background,
-.chat-pane-background[data-project-background-effect="gradient-blur"][data-session-empty="false"]
+.chat-pane-background[data-project-background-haze="true"][data-session-empty="false"]
   > .gradient-blur-background {
   opacity: var(--chat-background-session-opacity);
 }
 html.has-chat-background.chat-background-effect-ready:not(.chat-background-gradient-blur)
   .chat-pane-background[data-project-chat-background="false"]::before,
 .chat-pane-background[data-project-chat-background="true"]:not(
-    [data-project-background-effect="gradient-blur"]
+    [data-project-background-haze="true"]
   )::before {
   opacity: var(--chat-background-empty-opacity);
 }
 html.has-chat-background.chat-background-effect-ready:not(.chat-background-gradient-blur)
   .chat-pane-background[data-project-chat-background="false"][data-session-empty="false"]::before,
 .chat-pane-background[data-project-chat-background="true"]:not(
-    [data-project-background-effect="gradient-blur"]
+    [data-project-background-haze="true"]
   )[data-session-empty="false"]::before {
   opacity: var(--chat-background-session-opacity);
 }

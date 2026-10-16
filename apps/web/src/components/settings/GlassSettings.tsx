@@ -14,7 +14,6 @@ import {
   BACKGROUND_EFFECTS,
   BACKGROUND_EFFECT_DESCRIPTIONS,
   BACKGROUND_EFFECT_LABELS,
-  type BackgroundEffect,
   type BackgroundFocus,
   type ChatBackgroundScope,
   DEFAULT_BACKGROUND_FOCUS,
@@ -23,7 +22,11 @@ import {
   type GlassAppearance,
   getGlassState,
   globalBackgroundSourceKey,
+  HAZE_STYLES,
+  HAZE_STYLE_DESCRIPTIONS,
+  HAZE_STYLE_LABELS,
   isBackgroundEffect,
+  isHazeStyle,
   removeChatBackgroundImage,
   resetGlassAppearance,
   setChatBackgroundImage,
@@ -149,6 +152,11 @@ export function Segmented<T extends string>({
 export const BACKGROUND_EFFECT_OPTIONS = BACKGROUND_EFFECTS.map((effect) => ({
   value: effect,
   label: BACKGROUND_EFFECT_LABELS[effect],
+}));
+
+const HAZE_STYLE_OPTIONS = HAZE_STYLES.map((style) => ({
+  value: style,
+  label: HAZE_STYLE_LABELS[style],
 }));
 
 export const BACKGROUND_SCOPE_OPTIONS: readonly { value: ChatBackgroundScope; label: string }[] = [
@@ -281,7 +289,7 @@ export function TranslucencySettingsSection() {
 /** The image card shared by the global and project background settings. */
 export function BackgroundImagePicker({
   imageUrl,
-  effect,
+  haze,
   emptyOpacity,
   busy,
   error,
@@ -292,7 +300,7 @@ export function BackgroundImagePicker({
   followFocalPoint = false,
 }: {
   imageUrl: string | null;
-  effect: BackgroundEffect;
+  haze: boolean;
   emptyOpacity: number;
   busy: boolean;
   error: string | null;
@@ -330,7 +338,7 @@ export function BackgroundImagePicker({
                 : ({ "--chat-background-position": "center" } as CSSProperties)
             }
           >
-            {effect === "gradient-blur" ? (
+            {haze ? (
               <GradientBlurBackground
                 className="gradient-blur-preview absolute inset-0"
                 style={
@@ -571,7 +579,7 @@ export function ChatBackgroundSettingsSection() {
       />
       <BackgroundImagePicker
         imageUrl={previewUrl ?? imageUrl}
-        effect={a.backgroundEffect}
+        haze={a.haze}
         emptyOpacity={a.backgroundEmptyOpacity}
         busy={busy}
         error={error}
@@ -618,16 +626,31 @@ export function ChatBackgroundSettingsSection() {
               />
             }
           />
-          {a.backgroundEffect === "gradient-blur" ? (
+          <SettingsRow
+            title="Haze"
+            description="Takes the artwork away toward the bottom, over any effect."
+            resetAction={<ResetButton label="haze" keys={["haze"]} />}
+            control={
+              <Switch
+                aria-label="Haze"
+                checked={a.haze}
+                onCheckedChange={(haze) => updateGlassAppearance({ haze })}
+              />
+            }
+          />
+          {a.haze ? (
             <SettingsRow
-              title="Dither"
-              description="Haze the dithered artwork instead of the original."
-              resetAction={<ResetButton label="dither" keys={["hazeDither"]} />}
+              title="Haze style"
+              description={HAZE_STYLE_DESCRIPTIONS[a.hazeStyle]}
+              resetAction={<ResetButton label="haze style" keys={["hazeStyle"]} />}
               control={
-                <Switch
-                  aria-label="Dither the haze"
-                  checked={a.hazeDither}
-                  onCheckedChange={(hazeDither) => updateGlassAppearance({ hazeDither })}
+                <Segmented
+                  label="Haze style"
+                  value={a.hazeStyle}
+                  options={HAZE_STYLE_OPTIONS}
+                  onChange={(hazeStyle) => {
+                    if (isHazeStyle(hazeStyle)) updateGlassAppearance({ hazeStyle });
+                  }}
                 />
               }
             />

@@ -3,13 +3,7 @@
 
 import BackgroundEffectsWorker from "./backgroundEffects.worker.ts?worker";
 
-export type BackgroundEffect =
-  | "none"
-  | "dither"
-  | "ascii"
-  | "halftone"
-  | "scanlines"
-  | "gradient-blur";
+export type BackgroundEffect = "none" | "dither" | "ascii" | "halftone" | "scanlines";
 
 type WorkerResponse = { id: number; result?: Blob; error?: string };
 
@@ -89,12 +83,6 @@ async function ensureSource(sourceKey: string, src: string) {
   return loading;
 }
 
-/** The image the worker renders for an effect. Haze blurs dithered artwork unless dithering is off. */
-export function pixelEffectOf(effect: BackgroundEffect, hazeDither: boolean): BackgroundEffect {
-  if (effect !== "gradient-blur") return effect;
-  return hazeDither ? "dither" : "none";
-}
-
 export async function prepareBackgroundEffect(
   sourceKey: string,
   src: string,
@@ -128,7 +116,6 @@ export function clearPreparedBackground() {
   activeObjectUrl = null;
   document.documentElement.style.removeProperty("--chat-background-image");
   document.documentElement.classList.remove("chat-background-effect-ready");
-  document.documentElement.classList.remove("chat-background-gradient-blur");
 }
 
 export async function applyPreparedBackground(
@@ -136,14 +123,11 @@ export async function applyPreparedBackground(
   src: string,
   effect: BackgroundEffect,
   light: boolean,
-  hazeDither: boolean,
 ) {
   const revision = ++appliedRevision;
   const root = document.documentElement;
   root.classList.remove("chat-background-effect-ready");
-  root.classList.toggle("chat-background-gradient-blur", effect === "gradient-blur");
-  const pixelEffect = pixelEffectOf(effect, hazeDither);
-  if (pixelEffect === "none") {
+  if (effect === "none") {
     if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
     activeObjectUrl = null;
     root.style.setProperty("--chat-background-image", `url(${JSON.stringify(src)})`);
@@ -156,7 +140,7 @@ export async function applyPreparedBackground(
   }
   let blob: Blob;
   try {
-    blob = await prepareBackgroundEffect(sourceKey, src, pixelEffect, light);
+    blob = await prepareBackgroundEffect(sourceKey, src, effect, light);
   } catch {
     if (revision !== appliedRevision) return;
     root.style.setProperty("--chat-background-image", `url(${JSON.stringify(src)})`);

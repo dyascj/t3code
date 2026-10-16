@@ -12,7 +12,6 @@ vi.mock("./backgroundEffects", () => ({
   applyPreparedBackground: async () => {},
   clearPreparedBackground: () => {},
   prepareBackgroundEffect: async () => new Blob(),
-  pixelEffectOf: (effect: string) => effect,
 }));
 
 const {

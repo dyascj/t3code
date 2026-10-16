@@ -1,16 +1,15 @@
 import { type CSSProperties, useEffect, useState, useSyncExternalStore } from "react";
 
-import { pixelEffectOf, prepareBackgroundEffect } from "./backgroundEffects";
+import { prepareBackgroundEffect } from "./backgroundEffects";
 import { useFocalBackgroundRef } from "./focalPoint";
 import {
   type BackgroundEffect,
   type ChatBackgroundScope,
   clampBackgroundOpacity,
   getGlassState,
-  isBackgroundEffect,
   isChatBackgroundScope,
   isDarkScheme,
-  subscribeGlassState,
+  normalizeEffectAndHaze,
   subscribeScheme,
 } from "./glassAppearance";
 import { deleteImage, readImage, writeImage } from "./imageStore";
@@ -26,6 +25,7 @@ export interface ProjectChatBackgroundSettings {
   readonly sessionOpacity: number;
   readonly scope: ChatBackgroundScope;
   readonly effect: BackgroundEffect;
+  readonly haze: boolean;
 }
 
 const STORAGE_KEY = "t3code:project-chat-backgrounds:v1";
@@ -53,11 +53,16 @@ function normalize(raw: unknown): ProjectChatBackgroundSettings | null {
   if (typeof raw !== "object" || raw === null) return null;
   const input = raw as Record<string, unknown>;
   const global = getGlassState().appearance;
+  const { effect, haze } = normalizeEffectAndHaze(
+    { effect: input.effect, haze: input.haze, hazeDither: global.backgroundEffect === "dither" },
+    { effect: "none", haze: false },
+  );
   return {
     emptyOpacity: clampBackgroundOpacity(input.emptyOpacity, global.backgroundEmptyOpacity),
     sessionOpacity: clampBackgroundOpacity(input.sessionOpacity, global.backgroundSessionOpacity),
     scope: isChatBackgroundScope(input.scope) ? input.scope : global.backgroundScope,
-    effect: isBackgroundEffect(input.effect) ? input.effect : "none",
+    effect,
+    haze,
   };
 }
 
@@ -95,6 +100,7 @@ export function defaultProjectChatBackgroundSettings(): ProjectChatBackgroundSet
     sessionOpacity: global.backgroundSessionOpacity,
     scope: global.backgroundScope,
     effect: "none",
+    haze: false,
   };
 }
 
@@ -184,20 +190,15 @@ export function useBackgroundEffectUrl(
   sourceKey: string,
 ): string | null {
   const light = !useSyncExternalStore(subscribeScheme, isDarkScheme, () => true);
-  const hazeDither = useSyncExternalStore(
-    subscribeGlassState,
-    () => getGlassState().appearance.hazeDither,
-  );
-  const pixelEffect = pixelEffectOf(effect, hazeDither);
-  const themeKey = pixelEffect === "dither" || pixelEffect === "none" ? false : light;
-  const key = src ? `${sourceKey}:${pixelEffect}:${themeKey}` : null;
+  const themeKey = effect === "dither" || effect === "none" ? false : light;
+  const key = src ? `${sourceKey}:${effect}:${themeKey}` : null;
   const [prepared, setPrepared] = useState<{ key: string; url: string } | null>(null);
 
   useEffect(() => {
-    if (!src || pixelEffect === "none" || !key) return;
+    if (!src || effect === "none" || !key) return;
     let cancelled = false;
     let objectUrl: string | null = null;
-    void prepareBackgroundEffect(sourceKey, src, pixelEffect, themeKey)
+    void prepareBackgroundEffect(sourceKey, src, effect, themeKey)
       .then((blob) => {
         if (cancelled) return;
         objectUrl = URL.createObjectURL(blob);
@@ -210,9 +211,9 @@ export function useBackgroundEffectUrl(
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [sourceKey, src, pixelEffect, themeKey, key]);
+  }, [sourceKey, src, effect, themeKey, key]);
 
-  if (!src || pixelEffect === "none") return src;
+  if (!src || effect === "none") return src;
   return prepared?.key === key ? prepared.url : null;
 }
 
@@ -233,7 +234,7 @@ export function useChatBackgroundSurface(projectKey: string | null | undefined) 
   return {
     ref,
     "data-project-chat-background": background ? "true" : "false",
-    "data-project-background-effect": background?.settings.effect,
+    "data-project-background-haze": background?.settings.haze ? "true" : undefined,
     "data-project-background-scope": background?.settings.scope,
     style: background
       ? ({

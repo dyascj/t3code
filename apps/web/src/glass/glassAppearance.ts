@@ -1,7 +1,6 @@
 import {
   applyPreparedBackground,
   clearPreparedBackground,
-  pixelEffectOf,
   prepareBackgroundEffect,
   type BackgroundEffect,
 } from "./backgroundEffects";
@@ -15,6 +14,8 @@ import { deleteImage, readImage, writeImage } from "./imageStore";
 
 export type { BackgroundEffect };
 export type ChatBackgroundScope = "empty" | "all";
+/** How Haze takes the artwork away toward the bottom. */
+export type HazeStyle = "fade" | "blur" | "fade-blur";
 
 /** A focal point, in percent from the image's left and top edges. */
 export interface BackgroundFocus {
@@ -31,8 +32,9 @@ export interface GlassAppearance {
   readonly blurRadius: number;
   readonly mainPaneGlass: boolean;
   readonly backgroundEffect: BackgroundEffect;
-  /** Haze blurs a dithered render of the artwork instead of the original. */
-  readonly hazeDither: boolean;
+  /** Haze works over any effect: it fades or blurs the artwork toward the bottom. */
+  readonly haze: boolean;
+  readonly hazeStyle: HazeStyle;
   readonly backgroundScope: ChatBackgroundScope;
   readonly backgroundEmptyOpacity: number;
   readonly backgroundSessionOpacity: number;
@@ -57,8 +59,9 @@ export const DEFAULT_GLASS_APPEARANCE: GlassAppearance = {
   sidebarOpacity: 0.44,
   blurRadius: 23,
   mainPaneGlass: true,
-  backgroundEffect: "gradient-blur",
-  hazeDither: true,
+  backgroundEffect: "dither",
+  haze: true,
+  hazeStyle: "fade-blur",
   backgroundScope: "all",
   backgroundEmptyOpacity: 0.24,
   backgroundSessionOpacity: 0.24,
@@ -71,7 +74,6 @@ export const BACKGROUND_EFFECTS: readonly BackgroundEffect[] = [
   "ascii",
   "halftone",
   "scanlines",
-  "gradient-blur",
 ];
 
 export const BACKGROUND_EFFECT_LABELS: Record<BackgroundEffect, string> = {
@@ -80,7 +82,6 @@ export const BACKGROUND_EFFECT_LABELS: Record<BackgroundEffect, string> = {
   ascii: "ASCII",
   halftone: "Halftone",
   scanlines: "Scanlines",
-  "gradient-blur": "Haze",
 };
 
 export const BACKGROUND_EFFECT_DESCRIPTIONS: Record<BackgroundEffect, string> = {
@@ -89,11 +90,47 @@ export const BACKGROUND_EFFECT_DESCRIPTIONS: Record<BackgroundEffect, string> = 
   ascii: "Recreates the artwork with colored characters on black.",
   halftone: "Recreates the artwork with colored print dots on black.",
   scanlines: "Adds a pronounced horizontal display-line texture.",
-  "gradient-blur": "Blurs and fades the artwork into the background below.",
 };
 
 export function isBackgroundEffect(value: unknown): value is BackgroundEffect {
   return BACKGROUND_EFFECTS.includes(value as BackgroundEffect);
+}
+
+export const HAZE_STYLES: readonly HazeStyle[] = ["fade", "blur", "fade-blur"];
+
+export const HAZE_STYLE_LABELS: Record<HazeStyle, string> = {
+  fade: "Fade out",
+  blur: "Blur",
+  "fade-blur": "Fade to blur",
+};
+
+export const HAZE_STYLE_DESCRIPTIONS: Record<HazeStyle, string> = {
+  fade: "The artwork fades away toward the bottom.",
+  blur: "The bottom of the artwork blurs, at full strength.",
+  "fade-blur": "The artwork blurs as it fades away toward the bottom.",
+};
+
+export function isHazeStyle(value: unknown): value is HazeStyle {
+  return HAZE_STYLES.includes(value as HazeStyle);
+}
+
+/**
+ * Haze used to be an effect of its own, over the dithered art unless
+ * hazeDither was off. It is a switch over any effect now; this reads either shape.
+ */
+export function normalizeEffectAndHaze(
+  input: Record<string, unknown>,
+  fallback: { readonly effect: BackgroundEffect; readonly haze: boolean },
+): { effect: BackgroundEffect; haze: boolean } {
+  if (input.effect === "gradient-blur") {
+    return { effect: input.hazeDither === false ? "none" : "dither", haze: true };
+  }
+  const stored = isBackgroundEffect(input.effect);
+  return {
+    effect: stored ? (input.effect as BackgroundEffect) : fallback.effect,
+    // An effect stored before the switch existed had no haze.
+    haze: typeof input.haze === "boolean" ? input.haze : stored ? false : fallback.haze,
+  };
 }
 
 export function isChatBackgroundScope(value: unknown): value is ChatBackgroundScope {
@@ -153,6 +190,10 @@ export function normalizeGlassAppearance(raw: unknown): GlassAppearance {
   const input = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
   const d = DEFAULT_GLASS_APPEARANCE;
   const L = GLASS_LIMITS;
+  const { effect, haze } = normalizeEffectAndHaze(
+    { effect: input.backgroundEffect, haze: input.haze, hazeDither: input.hazeDither },
+    { effect: d.backgroundEffect, haze: d.haze },
+  );
   return {
     hue: Math.round(clampNumber(input.hue, L.hue.min, L.hue.max, d.hue)),
     saturation: Math.round(
@@ -171,10 +212,9 @@ export function normalizeGlassAppearance(raw: unknown): GlassAppearance {
       clampNumber(input.blurRadius, L.blurRadius.min, L.blurRadius.max, d.blurRadius),
     ),
     mainPaneGlass: typeof input.mainPaneGlass === "boolean" ? input.mainPaneGlass : d.mainPaneGlass,
-    backgroundEffect: isBackgroundEffect(input.backgroundEffect)
-      ? input.backgroundEffect
-      : d.backgroundEffect,
-    hazeDither: typeof input.hazeDither === "boolean" ? input.hazeDither : d.hazeDither,
+    backgroundEffect: effect,
+    haze,
+    hazeStyle: isHazeStyle(input.hazeStyle) ? input.hazeStyle : d.hazeStyle,
     backgroundScope: isChatBackgroundScope(input.backgroundScope)
       ? input.backgroundScope
       : d.backgroundScope,
@@ -215,6 +255,7 @@ const ADOPTED_DEFAULTS: Partial<GlassAppearance> = {
   blurRadius: DEFAULT_GLASS_APPEARANCE.blurRadius,
   mainPaneGlass: DEFAULT_GLASS_APPEARANCE.mainPaneGlass,
   backgroundEffect: DEFAULT_GLASS_APPEARANCE.backgroundEffect,
+  haze: DEFAULT_GLASS_APPEARANCE.haze,
 };
 
 /** Stored settings with the adopted defaults applied over them; everything else kept. */
@@ -302,7 +343,6 @@ function renderBackground() {
     state.imageUrl,
     state.appearance.backgroundEffect,
     !isDarkScheme(),
-    state.appearance.hazeDither,
   );
 }
 
@@ -355,16 +395,13 @@ function applyAppearance(previous: GlassAppearance | null) {
   const root = document.documentElement;
   root.classList.toggle("glass-body", a.mainPaneGlass);
   root.classList.toggle("chat-background-empty-only", a.backgroundScope === "empty");
+  root.classList.toggle("chat-background-gradient-blur", a.haze);
+  root.dataset.hazeStyle = a.hazeStyle;
   if (appliedBlurRadius !== a.blurRadius) {
     appliedBlurRadius = a.blurRadius;
     void window.desktopBridge?.setWindowBlurRadius?.(a.blurRadius);
   }
-  if (
-    previous === null ||
-    previous.backgroundEffect !== a.backgroundEffect ||
-    previous.hazeDither !== a.hazeDither
-  )
-    renderBackground();
+  if (previous === null || previous.backgroundEffect !== a.backgroundEffect) renderBackground();
 }
 
 export function updateGlassAppearance(patch: Partial<GlassAppearance>) {
@@ -462,7 +499,7 @@ function prewarmSlot(slot: BackgroundSlot) {
   void loadSlot(slot)
     .then((entry) => {
       if (!entry) return;
-      const effect = pixelEffectOf(state.appearance.backgroundEffect, state.appearance.hazeDither);
+      const effect = state.appearance.backgroundEffect;
       if (effect === "none") return;
       return prepareBackgroundEffect(
         globalBackgroundSourceKey(entry.revision),
@@ -527,11 +564,8 @@ export function initGlassAppearance() {
     if (dark === isDarkScheme()) return;
     dark = isDarkScheme();
     // Plain art and dither look the same in both schemes; re-rendering them only blinks the art.
-    const pixelEffect = pixelEffectOf(
-      state.appearance.backgroundEffect,
-      state.appearance.hazeDither,
-    );
-    if (pixelEffect === "none" || pixelEffect === "dither") return;
+    const effect = state.appearance.backgroundEffect;
+    if (effect === "none" || effect === "dither") return;
     if (state.imageUrl !== null) renderBackground();
   }).observe(document.documentElement, { attributeFilter: ["class"] });
   const slot = state.backgroundSlot;

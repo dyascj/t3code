@@ -51,6 +51,24 @@ describe("normalizeGlassAppearance", () => {
     ]);
   });
 
+  it("turns the old Haze effect into the haze switch over its art", () => {
+    expect(normalizeGlassAppearance({ backgroundEffect: "gradient-blur" })).toMatchObject({
+      backgroundEffect: "dither",
+      haze: true,
+      hazeStyle: "fade-blur",
+    });
+    expect(
+      normalizeGlassAppearance({ backgroundEffect: "gradient-blur", hazeDither: false }),
+    ).toMatchObject({ backgroundEffect: "none", haze: true });
+    expect(normalizeGlassAppearance({ backgroundEffect: "ascii" })).toMatchObject({
+      backgroundEffect: "ascii",
+      haze: false,
+    });
+    expect(
+      normalizeGlassAppearance({ backgroundEffect: "halftone", haze: true, hazeStyle: "blur" }),
+    ).toMatchObject({ backgroundEffect: "halftone", haze: true, hazeStyle: "blur" });
+  });
+
   it("keeps valid choices", () => {
     expect(
       normalizeGlassAppearance({
@@ -73,7 +91,8 @@ describe("adoptDefaults", () => {
       hue: 30,
       sidebarOpacity: DEFAULT_GLASS_APPEARANCE.sidebarOpacity,
       blurRadius: DEFAULT_GLASS_APPEARANCE.blurRadius,
-      backgroundEffect: "gradient-blur",
+      backgroundEffect: "dither",
+      haze: true,
     });
   });
 });

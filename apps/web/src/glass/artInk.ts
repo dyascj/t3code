@@ -157,8 +157,9 @@ function resolveInk(element: HTMLElement, pane: HTMLElement | null): "dark" | "l
   const imageLeft = frame.left + (frame.width - imageWidth) * (positionX ?? 0.5);
   const imageTop = frame.top + (frame.height - imageHeight) * (positionY ?? 0.5);
   const middle = (box.top + box.height / 2 - frame.top) / frame.height;
+  // Blur keeps the art at full strength; the fading styles take it away down the frame.
   const weight =
-    appearance.backgroundEffect === "gradient-blur" ? hazeArtWeight(middle, session) : 1;
+    appearance.haze && appearance.hazeStyle !== "blur" ? hazeArtWeight(middle, session) : 1;
   const dark = isDarkScheme();
   // Slices across the element, so a label over a dark patch is not averaged away.
   const seen = Array.from({ length: INK_SLICES }, (_, slice) => {

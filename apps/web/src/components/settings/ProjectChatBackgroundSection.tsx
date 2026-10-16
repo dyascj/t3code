@@ -20,6 +20,7 @@ import {
   Segmented,
   useImageTask,
 } from "./GlassSettings";
+import { Switch } from "../ui/switch";
 import { SettingsRow, SettingsSection } from "./settingsLayout";
 
 const percent = (value: number) => Math.round(value * 100);
@@ -53,7 +54,7 @@ export function ProjectChatBackgroundSection({
     >
       <BackgroundImagePicker
         imageUrl={background ? (previewUrl ?? background.src) : null}
-        effect={settings.effect}
+        haze={settings.haze}
         emptyOpacity={settings.emptyOpacity}
         busy={busy}
         error={error}
@@ -82,6 +83,19 @@ export function ProjectChatBackgroundSection({
                   if (isBackgroundEffect(effect))
                     updateProjectChatBackgroundSettings(projectKey, { effect });
                 }}
+              />
+            }
+          />
+          <SettingsRow
+            title="Haze"
+            description="Takes the artwork away toward the bottom, in the style set in Appearance."
+            control={
+              <Switch
+                aria-label="Project background haze"
+                checked={settings.haze}
+                onCheckedChange={(haze) =>
+                  updateProjectChatBackgroundSettings(projectKey, { haze })
+                }
               />
             }
           />

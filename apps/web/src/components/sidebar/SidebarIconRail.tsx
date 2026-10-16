@@ -35,6 +35,7 @@ import {
 } from "../Sidebar.logic";
 import {
   Menu,
+  MenuGroup,
   MenuGroupLabel,
   MenuItem,
   MenuPopup,
@@ -181,33 +182,35 @@ function RailSettledMenu() {
           align="end"
           className="max-h-[min(28rem,var(--available-height))] w-72"
         >
-          <MenuGroupLabel>Settled</MenuGroupLabel>
-          {settled.length === 0 ? (
-            <p className="px-2 py-1.5 text-sm text-muted-foreground">Nothing settled yet</p>
-          ) : (
-            settled.map((thread) => {
-              const ref = scopeThreadRef(thread.environmentId, thread.id);
-              const timestamp = resolveSettledThreadTimestamp(thread);
-              return (
-                <MenuItem
-                  key={scopedThreadKey(ref)}
-                  onClick={() =>
-                    void navigate({
-                      to: "/$environmentId/$threadId",
-                      params: buildThreadRouteParams(ref),
-                    })
-                  }
-                >
-                  <span className="min-w-0 flex-1 truncate">{thread.title}</span>
-                  {timestamp ? (
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {formatRelativeTimeLabel(timestamp)}
-                    </span>
-                  ) : null}
-                </MenuItem>
-              );
-            })
-          )}
+          <MenuGroup>
+            <MenuGroupLabel>Settled</MenuGroupLabel>
+            {settled.length === 0 ? (
+              <p className="px-2 py-1.5 text-sm text-muted-foreground">Nothing settled yet</p>
+            ) : (
+              settled.map((thread) => {
+                const ref = scopeThreadRef(thread.environmentId, thread.id);
+                const timestamp = resolveSettledThreadTimestamp(thread);
+                return (
+                  <MenuItem
+                    key={scopedThreadKey(ref)}
+                    onClick={() =>
+                      void navigate({
+                        to: "/$environmentId/$threadId",
+                        params: buildThreadRouteParams(ref),
+                      })
+                    }
+                  >
+                    <span className="min-w-0 flex-1 truncate">{thread.title}</span>
+                    {timestamp ? (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {formatRelativeTimeLabel(timestamp)}
+                      </span>
+                    ) : null}
+                  </MenuItem>
+                );
+              })
+            )}
+          </MenuGroup>
         </MenuPopup>
       </Menu>
     </SidebarMenuItem>
