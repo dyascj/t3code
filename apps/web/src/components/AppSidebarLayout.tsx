@@ -147,16 +147,22 @@ function SidebarControl() {
     };
   }, [keybindings, toggleSidebar, usagePageOpen]);
 
-  // On desktop the toggle lives in the sidebar header when open and atop the rail
-  // when collapsed; collapsed, the title bar carries back and forward here instead.
+  // On desktop the toggle lives in the sidebar header when open. Collapsed, the
+  // title bar carries back, forward, and the toggle here, in the same spot.
   if (!isMobile) {
     if (isSidebarVisible) return null;
     return (
       <div
-        className="fixed left-[var(--workspace-controls-left)] top-[var(--workspace-controls-top)] z-50 ml-px flex h-[var(--workspace-topbar-height)] items-center"
+        className="fixed left-[var(--workspace-controls-left)] top-[var(--workspace-controls-top)] z-50 ml-px flex h-[var(--workspace-topbar-height)] items-center gap-0.5"
         data-sidebar-control=""
       >
         <HistoryNavButtons />
+        <Tooltip>
+          <TooltipTrigger render={<SidebarTrigger aria-label="Expand sidebar" />} />
+          <TooltipPopup side="bottom">
+            Expand sidebar{shortcutLabel ? ` (${shortcutLabel})` : ""}
+          </TooltipPopup>
+        </Tooltip>
       </div>
     );
   }

@@ -3814,8 +3814,8 @@ export default function Sidebar() {
     },
     [sectionByThreadKey],
   );
-  // Include every visible row in the measured order. Older servers disable
-  // pickup on their rows without changing where those rows render.
+  // Open threads (pinned, active, working) live in the title bar tabs, so the
+  // list holds only the shelves: snoozed and settled.
   const sidebarListItems = useMemo((): readonly SidebarListItem[] => {
     const rowsOf = (
       list: readonly EnvironmentThreadShell[],
@@ -3825,27 +3825,8 @@ export default function Sidebar() {
         const key = scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id));
         return { kind: "thread", key, section };
       });
-    if (
-      pinnedThreads.length +
-        activeThreads.length +
-        workingThreads.length +
-        snoozedThreads.length +
-        settledThreads.length ===
-      0
-    ) {
-      return [];
-    }
-    const items: SidebarListItem[] = [{ kind: "marker", marker: "pinned-header" }];
-    const pinnedRows = rowsOf(pinnedThreads, "pinned");
-    items.push(...pinnedRows);
-    items.push({ kind: "marker", marker: "pinned-divider" });
-    const activeRows = rowsOf(activeThreads, "active");
-    items.push({ kind: "marker", marker: "active-placeholder" });
-    items.push(...activeRows);
-    if (workingThreads.length > 0) {
-      items.push({ kind: "marker", marker: "working-header" });
-      items.push(...rowsOf(visibleWorkingThreads, "working"));
-    }
+    if (snoozedThreads.length + settledThreads.length === 0) return [];
+    const items: SidebarListItem[] = [];
     if (snoozedThreads.length > 0) {
       items.push({ kind: "marker", marker: "snoozed-header" });
       items.push(...rowsOf(visibleSnoozedThreads, "snoozed"));
@@ -3855,16 +3836,7 @@ export default function Sidebar() {
     items.push({ kind: "marker", marker: "settled-placeholder" });
     items.push(...settledRows);
     return items;
-  }, [
-    activeThreads,
-    pinnedThreads,
-    renderedSettledThreads,
-    settledThreads.length,
-    snoozedThreads.length,
-    visibleSnoozedThreads,
-    visibleWorkingThreads,
-    workingThreads.length,
-  ]);
+  }, [renderedSettledThreads, settledThreads.length, snoozedThreads.length, visibleSnoozedThreads]);
   useEffect(() => {
     if (
       dragState !== null &&
@@ -5478,7 +5450,6 @@ export default function Sidebar() {
                               <SidebarSectionHeader
                                 key="snoozed-shelf-header"
                                 marker="snoozed-header"
-                                className={cn(workingThreads.length === 0 && "mt-auto")}
                                 label={
                                   snoozedShelfExpanded
                                     ? "Snoozed"
@@ -5496,9 +5467,6 @@ export default function Sidebar() {
                               <SidebarSectionHeader
                                 key="settled-shelf-header"
                                 marker="settled-header"
-                                className={cn(
-                                  workingThreads.length + snoozedThreads.length === 0 && "mt-auto",
-                                )}
                                 label={
                                   settledShelfExpanded
                                     ? "Settled"
@@ -5554,12 +5522,7 @@ export default function Sidebar() {
           ) : null}
           {!isSearchingThreads &&
           visibleDraftSessionCount === 0 &&
-          pinnedThreads.length +
-            activeThreads.length +
-            workingThreads.length +
-            snoozedThreads.length +
-            settledThreads.length ===
-            0 ? (
+          snoozedThreads.length + settledThreads.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-2 py-6 text-center text-xs text-muted-foreground/60">
               {projects.length === 0 ? (
                 <>
@@ -5574,9 +5537,9 @@ export default function Sidebar() {
                   </button>
                 </>
               ) : scopedProjectGroup ? (
-                `No threads in ${scopedProjectGroup.displayName} yet`
+                `Nothing settled in ${scopedProjectGroup.displayName} yet`
               ) : (
-                "No threads yet"
+                "Nothing settled yet"
               )}
             </div>
           ) : null}

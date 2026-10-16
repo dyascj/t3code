@@ -1,14 +1,20 @@
+import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
+import {
+  resolveSettledThreadTimestamp,
+  sortSettledThreads,
+} from "@t3tools/client-runtime/state/thread-sort";
+import { useAtomValue } from "@effect/atom-react";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  ArchiveIcon,
   FolderPlusIcon,
   ListFilterIcon,
-  PanelLeftIcon,
   SearchIcon,
   SettingsIcon,
   SquarePenIcon,
   Undo2Icon,
 } from "lucide-react";
-import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import { useMemo, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 
 import { openCommandPalette } from "../../commandPaletteBus";
 import { isElectron } from "../../env";
@@ -17,17 +23,31 @@ import { useSidebarProjectScope } from "../../hooks/useSidebarProjectGroups";
 import { undoLatestThreadAction, useThreadUndoNotice } from "../../hooks/showThreadUndoNotice";
 import { startNewThreadFromContext } from "../../lib/chatThreadActions";
 import { cn } from "../../lib/utils";
+import { useThreadShells } from "../../state/entities";
+import { environmentServerConfigsAtom } from "../../state/server";
+import { buildThreadRouteParams } from "../../threadRoutes";
+import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { useUiStateStore } from "../../uiStateStore";
 import { ProjectFavicon } from "../ProjectFavicon";
-import { shouldCreateNewThreadInCurrentProject } from "../Sidebar.logic";
-import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
+import {
+  filterSidebarV2VisibleThreads,
+  shouldCreateNewThreadInCurrentProject,
+} from "../Sidebar.logic";
+import {
+  Menu,
+  MenuGroupLabel,
+  MenuItem,
+  MenuPopup,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuTrigger,
+} from "../ui/menu";
 import {
   SidebarContent,
   SidebarFooter,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { useSidebarPageLinks } from "./SidebarChrome";
@@ -35,9 +55,12 @@ import { useSidebarPageLinks } from "./SidebarChrome";
 /*
  * The collapsed sidebar: a 48px rail with the expanded header's entries as
  * icons, in the same order. Search, the project filter, new thread, and add
- * project, then the pages; settings and expand sit at the bottom. Threads live
- * in the title bar tabs.
+ * project, then the pages, then Settled; settings sits at the bottom. Open
+ * threads live in the title bar tabs, and expand sits in the title bar.
  */
+
+// The rail's menu shows the most recent settled threads; the sidebar pages the rest.
+const RAIL_SETTLED_LIMIT = 25;
 
 interface NavItem {
   readonly label: string;
@@ -123,8 +146,75 @@ function RailProjectFilter() {
   );
 }
 
+/** The expanded sidebar's Settled shelf as a menu, narrowed by the project filter. */
+function RailSettledMenu() {
+  const navigate = useNavigate();
+  const threads = useThreadShells();
+  const serverConfigs = useAtomValue(environmentServerConfigsAtom);
+  const { group } = useSidebarProjectScope();
+  const settled = useMemo(() => {
+    const scopedKeys =
+      group === null
+        ? null
+        : new Set(group.memberProjectRefs.map((ref) => `${ref.environmentId}:${ref.projectId}`));
+    return sortSettledThreads(
+      filterSidebarV2VisibleThreads(threads, scopedKeys).filter(
+        (thread) =>
+          serverConfigs.get(thread.environmentId)?.environment.capabilities.threadSettlement ===
+            true && thread.settledOverride === "settled",
+      ),
+    ).slice(0, RAIL_SETTLED_LIMIT);
+  }, [group, serverConfigs, threads]);
+  return (
+    <SidebarMenuItem>
+      <Menu>
+        <Tooltip>
+          <TooltipTrigger
+            render={<MenuTrigger render={<SidebarMenuButton size="icon" aria-label="Settled" />} />}
+          >
+            <ArchiveIcon />
+          </TooltipTrigger>
+          <TooltipPopup side="right">Settled</TooltipPopup>
+        </Tooltip>
+        <MenuPopup
+          side="right"
+          align="end"
+          className="max-h-[min(28rem,var(--available-height))] w-72"
+        >
+          <MenuGroupLabel>Settled</MenuGroupLabel>
+          {settled.length === 0 ? (
+            <p className="px-2 py-1.5 text-sm text-muted-foreground">Nothing settled yet</p>
+          ) : (
+            settled.map((thread) => {
+              const ref = scopeThreadRef(thread.environmentId, thread.id);
+              const timestamp = resolveSettledThreadTimestamp(thread);
+              return (
+                <MenuItem
+                  key={scopedThreadKey(ref)}
+                  onClick={() =>
+                    void navigate({
+                      to: "/$environmentId/$threadId",
+                      params: buildThreadRouteParams(ref),
+                    })
+                  }
+                >
+                  <span className="min-w-0 flex-1 truncate">{thread.title}</span>
+                  {timestamp ? (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {formatRelativeTimeLabel(timestamp)}
+                    </span>
+                  ) : null}
+                </MenuItem>
+              );
+            })
+          )}
+        </MenuPopup>
+      </Menu>
+    </SidebarMenuItem>
+  );
+}
+
 export function SidebarIconRail() {
-  const { toggleSidebar } = useSidebar();
   const navigate = useNavigate();
   const pageLinks = useSidebarPageLinks();
   const { groups } = useSidebarProjectScope();
@@ -157,7 +247,6 @@ export function SidebarIconRail() {
       icon: <SettingsIcon />,
       onSelect: () => void navigate({ to: "/settings" }),
     },
-    { label: "Expand sidebar", icon: <PanelLeftIcon />, onSelect: toggleSidebar },
   ];
   return (
     <>
@@ -197,6 +286,10 @@ export function SidebarIconRail() {
                 }}
               />
             ))}
+          </SidebarMenu>
+          <div aria-hidden className="my-1 h-px w-6 shrink-0 self-center bg-sidebar-border" />
+          <SidebarMenu className="items-center">
+            <RailSettledMenu />
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="items-center">

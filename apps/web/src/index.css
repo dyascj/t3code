@@ -2491,15 +2491,14 @@ html.electron.electron-mac [data-slot="switch-thumb"] {
 }
 
 /* Collapsed on desktop the sidebar is an icon rail under a title bar that runs
-   across it: the window controls, back and forward, then the page's own header.
-   The rail draws its own edge below the title bar, and the expand button is its
-   first icon. */
+   across it: the window controls, back, forward, and expand, then the page's own
+   header. The rail draws its own edge below the title bar. */
 @media (min-width: 768px) {
   [data-slot="sidebar-wrapper"][data-sidebar-state="collapsed"] {
     --workspace-titlebar-content-left: max(
       0.75rem,
       calc(
-        var(--workspace-controls-left) + 2 * var(--workspace-titlebar-control-size) + 0.125rem +
+        var(--workspace-controls-left) + 3 * var(--workspace-titlebar-control-size) + 0.25rem +
           var(--workspace-titlebar-control-gap) - var(--sidebar-width-icon)
       )
     ) !important;
