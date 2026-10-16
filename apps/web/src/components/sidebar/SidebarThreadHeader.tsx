@@ -1,14 +1,11 @@
 /**
- * The sidebar header: one row holding search, project scope and new thread.
- *
- * Search owns the row's text and spans it. Project scope collapses to an icon
- * that sits with new-project and new-thread as a segmented group at the end.
- * The scope icon swaps to the project favicon while a project is selected,
- * so the header still names the scope after the row that showed it is gone.
+ * The sidebar header, top to bottom: search, the project filter, new thread,
+ * add project, then the pages the sidebar opens. The collapsed rail shows the
+ * same entries as icons, in the same order.
  *
  * The scope picker itself is passed in: its combobox state lives with the rest
  * of the sidebar's scope logic. `searchFieldRef` lands on the search field so
- * the picker's popup can anchor to that width rather than to its 28px trigger.
+ * the picker's popup can anchor to that width.
  */
 import { FolderPlusIcon, SearchIcon, SquarePenIcon, XIcon } from "lucide-react";
 import {
@@ -19,17 +16,14 @@ import {
   type RefObject,
 } from "react";
 
-import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { SidebarInput, SidebarMenuButton } from "../ui/sidebar";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { useSidebarPageLinks } from "./SidebarChrome";
 
 export interface SidebarThreadHeaderProps {
   /** Lands on the search field so a popup can anchor to its width. */
   searchFieldRef?: RefObject<HTMLDivElement | null>;
-  /** Without projects there is nothing to scope, so those controls stay out. */
-  hasProjects: boolean;
-  /** The project scope combobox, rendered as the first icon of the group. */
+  /** The project scope combobox, rendered as the row under search. */
   projectScope: ReactNode;
   onNewProject: () => void;
   /** Receives the click so Shift+click can skip the project picker. */
@@ -51,7 +45,6 @@ export interface SidebarThreadHeaderProps {
 
 export function SidebarThreadHeader({
   searchFieldRef,
-  hasProjects,
   projectScope,
   onNewProject,
   onNewThread,
@@ -73,12 +66,10 @@ export function SidebarThreadHeader({
   // list; pointing aria-activedescendant at a removed option strands the
   // screen reader on nothing.
   const activeResultExists = resultsVisible && activeSearchResultIndex < searchResultCount;
-  const newThreadLabel = newThreadShortcutLabel
-    ? `New thread (${newThreadShortcutLabel})`
-    : "New thread";
+  const pageLinks = useSidebarPageLinks();
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex flex-col gap-px">
       <div
         ref={searchFieldRef}
         className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
@@ -120,85 +111,59 @@ export function SidebarThreadHeader({
           </Button>
         ) : null}
       </div>
-      {/* Unfilled like the search field beside it: the buttons carry their own
-          hover states, and a background well reads far louder on themed
-          palettes than on the base light and dark ones. */}
-      <div className="flex shrink-0 items-center">
-        {hasProjects ? (
-          <>
-            {projectScope}
-            <SidebarHeaderIconButton label="Add project" onClick={onNewProject}>
-              <FolderPlusIcon />
-            </SidebarHeaderIconButton>
-          </>
-        ) : null}
-        <SidebarHeaderIconButton
-          label="New thread"
-          tooltip={
-            showNewThreadInProjectHint ? (
-              <span className="flex flex-col gap-0.5">
-                <span>{newThreadLabel}</span>
-                <span className="text-muted-foreground">
-                  New thread in current project: Shift+click
-                  {newThreadInProjectShortcutLabel ? ` (${newThreadInProjectShortcutLabel})` : ""}
-                </span>
-              </span>
-            ) : (
-              newThreadLabel
-            )
-          }
-          disabled={newThreadDisabled}
-          onClick={onNewThread}
+      {projectScope}
+      <SidebarHeaderRow
+        label="New thread"
+        trailing={newThreadShortcutLabel}
+        title={
+          showNewThreadInProjectHint
+            ? `Shift+click: new thread in the current project${newThreadInProjectShortcutLabel ? ` (${newThreadInProjectShortcutLabel})` : ""}`
+            : undefined
+        }
+        disabled={newThreadDisabled}
+        onClick={onNewThread}
+      >
+        <SquarePenIcon />
+      </SidebarHeaderRow>
+      <SidebarHeaderRow label="Add project" onClick={onNewProject}>
+        <FolderPlusIcon />
+      </SidebarHeaderRow>
+      <div aria-hidden className="mx-2 my-1 h-px bg-sidebar-border" />
+      {pageLinks.map((link) => (
+        <SidebarHeaderRow
+          key={link.label}
+          label={link.label}
+          isActive={link.active}
+          onClick={link.onSelect}
         >
-          <SquarePenIcon />
-        </SidebarHeaderIconButton>
-      </div>
+          {link.icon}
+        </SidebarHeaderRow>
+      ))}
     </div>
   );
 }
 
 /**
- * Icon button with a tooltip, sized for the header's segmented pair. Spreads
- * unknown props through so it can serve as a popup trigger's render target,
- * which injects its own handlers, ref and aria state.
+ * One labeled row of the header. Spreads unknown props through so it can
+ * serve as a popup trigger's render target; children are the leading icon.
  */
-export function SidebarHeaderIconButton({
+export function SidebarHeaderRow({
   label,
-  tooltip = label,
-  className,
+  trailing,
   children,
   ...rest
 }: {
-  /** Accessible name; also the tooltip unless `tooltip` says more. */
-  label: string;
-  tooltip?: ReactNode;
-  className?: string | undefined;
+  label: ReactNode;
+  trailing?: ReactNode;
   children?: ReactNode;
-} & Omit<
-  ComponentProps<typeof SidebarMenuButton>,
-  "children" | "className" | "tooltip" | "isActive" | "aria-label"
->) {
+} & Omit<ComponentProps<typeof SidebarMenuButton>, "children" | "className" | "tooltip">) {
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <SidebarMenuButton
-            size="icon"
-            type="button"
-            aria-label={label}
-            {...rest}
-            className={cn("relative size-7 shrink-0", className)}
-          />
-        }
-      >
-        {children}
-        {/* Coarse-pointer hit area, matching the rest of the sidebar chrome. */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden"
-        />
-      </TooltipTrigger>
-      <TooltipPopup side="top">{tooltip}</TooltipPopup>
-    </Tooltip>
+    <SidebarMenuButton type="button" {...rest}>
+      {children}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {trailing ? (
+        <span className="shrink-0 text-2xs text-muted-foreground/70">{trailing}</span>
+      ) : null}
+    </SidebarMenuButton>
   );
 }

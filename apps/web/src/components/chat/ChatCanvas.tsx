@@ -12,6 +12,9 @@ import { resolveChatCanvasLayout, type ChatCanvasPreview } from "./chatCanvasLay
 import type { PreviewMiniPlayerObstacles } from "../preview/previewMiniPlayerLayout";
 import { observeResize } from "../../lib/observeResize";
 
+/** The floating chat controls: 12px inset plus their 32px height. */
+export const CHAT_CONTROLS_RESERVED_HEIGHT = 44;
+
 /**
  * Owns the available conversation space. Cards only report where they sit; the
  * canvas decides when chat moves over to make room for them.
@@ -132,7 +135,8 @@ export function ChatCanvas({
       clearPreview,
       registerTimeline,
       reportDetailsCard,
-      detailsCardTopInset: findBar?.bottom ?? 0,
+      // The chat's floating controls hold the top right; cards start below them.
+      detailsCardTopInset: findBar?.bottom ?? CHAT_CONTROLS_RESERVED_HEIGHT,
     };
   }, [
     measurements,

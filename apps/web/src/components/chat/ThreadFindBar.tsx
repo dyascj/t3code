@@ -62,7 +62,7 @@ export function ThreadFindBar(props: ThreadFindBarProps) {
     // Fades in while the details popover slides out from under it.
     <div
       data-thread-find-bar
-      className="absolute top-3 right-3 z-40 w-[min(var(--thread-details-panel-width),calc(100%-1.5rem))] transition-opacity duration-150 ease-out starting:opacity-0 motion-reduce:transition-none"
+      className="absolute top-14 right-3 z-40 w-[min(var(--thread-details-panel-width),calc(100%-1.5rem))] transition-opacity duration-150 ease-out starting:opacity-0 motion-reduce:transition-none"
     >
       <InputGroup
         variant="popover"

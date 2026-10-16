@@ -3,7 +3,7 @@
 import { act, useLayoutEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vite-plus/test";
-import { ChatCanvas } from "./ChatCanvas";
+import { CHAT_CONTROLS_RESERVED_HEIGHT, ChatCanvas } from "./ChatCanvas";
 import { useChatCanvas } from "./ChatCanvasContext";
 
 const resize = vi.hoisted(() => ({ callbacks: new Set<() => void>() }));
@@ -98,7 +98,8 @@ it.each([16, 24])(
     expect(canvas?.layout.frame?.y).toBe(3 * size + 12);
 
     await renderFind(false);
-    expect(canvas?.detailsCardTopInset).toBe(0);
+    // Closed, the card still starts below the chat's floating controls.
+    expect(canvas?.detailsCardTopInset).toBe(CHAT_CONTROLS_RESERVED_HEIGHT);
     expect(canvas?.layout.frame?.y).toBe(12);
 
     await renderFind(true);

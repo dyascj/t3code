@@ -1,36 +1,26 @@
-import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
-import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
-import { effectiveSnoozed } from "@t3tools/client-runtime/state/thread-settled";
-import { useAtomValue } from "@effect/atom-react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
-  ChartNoAxesColumnIcon,
+  FolderPlusIcon,
+  ListFilterIcon,
   PanelLeftIcon,
   SearchIcon,
   SettingsIcon,
+  SquarePenIcon,
   Undo2Icon,
 } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
 import { openCommandPalette } from "../../commandPaletteBus";
-import { undoLatestThreadAction, useThreadUndoNotice } from "../../hooks/showThreadUndoNotice";
 import { isElectron } from "../../env";
+import { useHandleNewThread } from "../../hooks/useHandleNewThread";
+import { useSidebarProjectScope } from "../../hooks/useSidebarProjectGroups";
+import { undoLatestThreadAction, useThreadUndoNotice } from "../../hooks/showThreadUndoNotice";
+import { startNewThreadFromContext } from "../../lib/chatThreadActions";
 import { cn } from "../../lib/utils";
-import { usePullRequestsSupported } from "../../state/environments";
-import { useProjects, useThreadShells } from "../../state/entities";
-import { environmentServerConfigsAtom } from "../../state/server";
-import { buildThreadRouteParams, resolveThreadRouteRef } from "../../threadRoutes";
 import { useUiStateStore } from "../../uiStateStore";
 import { ProjectFavicon } from "../ProjectFavicon";
-import {
-  hasUnseenCompletion,
-  isSidebarSubagentThread,
-  resolveSidebarThreadStatus,
-  resolveThreadLastVisitedAt,
-  sortThreadsForSidebar,
-} from "../Sidebar.logic";
-import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPreferences";
-import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
+import { shouldCreateNewThreadInCurrentProject } from "../Sidebar.logic";
+import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
 import {
   SidebarContent,
   SidebarFooter,
@@ -39,17 +29,21 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "../ui/sidebar";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { useSidebarPageLinks } from "./SidebarChrome";
 
 /*
- * The collapsed sidebar: a 48px rail with Search on top, the thread list as
- * project icons in the scrolling middle, and the utility pages at the bottom.
- * Expanded, the sidebar is upstream's thread list.
+ * The collapsed sidebar: a 48px rail with the expanded header's entries as
+ * icons, in the same order. Search, the project filter, new thread, and add
+ * project, then the pages; settings and expand sit at the bottom. Threads live
+ * in the title bar tabs.
  */
 
 interface NavItem {
   readonly label: string;
   readonly icon: ReactNode;
-  readonly onSelect: () => void;
+  readonly active?: boolean;
+  readonly onSelect: (event: ReactMouseEvent) => void;
 }
 
 function RailItem({ item }: { item: NavItem }) {
@@ -59,6 +53,7 @@ function RailItem({ item }: { item: NavItem }) {
         size="icon"
         tooltip={item.label}
         aria-label={item.label}
+        isActive={item.active ?? false}
         onClick={item.onSelect}
       >
         {item.icon}
@@ -75,130 +70,88 @@ function RailUndoItem() {
   return <RailItem item={{ label, icon: <Undo2Icon />, onSelect: undoLatestThreadAction }} />;
 }
 
-// The same hues the expanded sidebar uses for each status.
-const STATUS_DOT = {
-  working: { label: "Working", className: "bg-sky-500 animate-status-pulse" },
-  waiting: { label: "Waiting", className: "bg-foreground" },
-  approval: { label: "Needs approval", className: "bg-amber-500" },
-  input: { label: "Needs input", className: "bg-indigo-500" },
-  failed: { label: "Failed", className: "bg-red-500" },
-  limited: { label: "Limited", className: "bg-amber-500" },
-  done: { label: "Done", className: "bg-emerald-500" },
-} as const;
-
-/**
- * The threads the expanded list shows in its pinned and active sections, in
- * that order. Settled and snoozed threads stay in the expanded sidebar.
- */
-function RailThreads() {
-  const navigate = useNavigate();
-  const threads = useThreadShells();
-  const projects = useProjects();
-  const serverConfigs = useAtomValue(environmentServerConfigsAtom);
-  const localLastVisitedAtById = useUiStateStore((state) => state.threadLastVisitedAtById);
-  const activeKey = useParams({
-    strict: false,
-    select: (params) => {
-      const ref = resolveThreadRouteRef(params);
-      return ref ? scopedThreadKey(ref) : null;
-    },
-  });
-  const projectByKey = useMemo(
-    () => new Map(projects.map((project) => [`${project.environmentId}:${project.id}`, project])),
-    [projects],
-  );
-  const shown = useMemo(() => {
-    const now = new Date().toISOString();
-    const open = threads.filter((thread) => {
-      if (thread.archivedAt !== null) return false;
-      const key = scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id));
-      // Subagents live under their parent; one only shows here while it is open.
-      if (isSidebarSubagentThread(thread) && key !== activeKey) return false;
-      const capabilities = serverConfigs.get(thread.environmentId)?.environment.capabilities;
-      if (capabilities?.threadSnooze === true && effectiveSnoozed(thread, { now })) return false;
-      return !(capabilities?.threadSettlement === true && thread.settledOverride === "settled");
-    });
-    return [
-      ...open.filter((thread) => thread.pinnedAt != null),
-      ...sortThreadsForSidebar(open.filter((thread) => thread.pinnedAt == null)),
-    ];
-  }, [activeKey, serverConfigs, threads]);
-
-  const statusOf = (thread: EnvironmentThreadShell, key: string) => {
-    const status = resolveSidebarThreadStatus(thread);
-    if (status !== "ready") return STATUS_DOT[status];
-    const lastVisitedAt = resolveThreadLastVisitedAt(
-      thread.lastVisitedAt,
-      localLastVisitedAtById[key],
-    );
-    return hasUnseenCompletion({ ...thread, lastVisitedAt }) ? STATUS_DOT.done : null;
-  };
-
+/** The sidebar's project filter as a menu; it narrows the title bar tabs too. */
+function RailProjectFilter() {
+  const { groups, group } = useSidebarProjectScope();
+  const setScopeKey = useUiStateStore((store) => store.setSidebarProjectScopeKey);
+  const label = group
+    ? `Filter threads by project: ${group.displayName}`
+    : "Filter threads by project";
   return (
-    <SidebarMenu className="items-center">
-      {shown.map((thread) => {
-        const ref = scopeThreadRef(thread.environmentId, thread.id);
-        const key = scopedThreadKey(ref);
-        const project = projectByKey.get(`${thread.environmentId}:${thread.projectId}`);
-        const status = statusOf(thread, key);
-        const label = [thread.title, project?.title, status?.label].filter(Boolean).join(" · ");
-        return (
-          <SidebarMenuItem key={key}>
-            <SidebarMenuButton
-              size="icon"
-              tooltip={label}
-              aria-label={label}
-              isActive={key === activeKey}
-              className="relative"
-              onClick={() =>
-                void navigate({
-                  to: "/$environmentId/$threadId",
-                  params: buildThreadRouteParams(ref),
-                })
-              }
-            >
-              {project ? (
-                <ProjectFavicon project={project} className="size-4" />
-              ) : (
-                <span className="size-4 rounded-sm bg-muted" />
-              )}
-              {status ? (
-                <span
-                  aria-hidden
-                  className={cn(
-                    "absolute top-1 right-1 size-1.5 rounded-full ring-2 ring-sidebar",
-                    status.className,
-                  )}
-                />
-              ) : null}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        );
-      })}
-    </SidebarMenu>
+    <SidebarMenuItem>
+      <Menu>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <MenuTrigger
+                render={
+                  <SidebarMenuButton size="icon" aria-label={label} isActive={group !== null} />
+                }
+              />
+            }
+          >
+            {group ? (
+              <span className="flex shrink-0">
+                <ProjectFavicon project={group} className="size-4" />
+              </span>
+            ) : (
+              <ListFilterIcon />
+            )}
+          </TooltipTrigger>
+          <TooltipPopup side="right">{label}</TooltipPopup>
+        </Tooltip>
+        <MenuPopup side="right" align="start" className="max-w-72">
+          <MenuRadioGroup
+            value={group?.projectKey ?? "all"}
+            onValueChange={(value) => setScopeKey(value === "all" ? null : String(value))}
+          >
+            <MenuRadioItem value="all" closeOnClick>
+              All projects
+            </MenuRadioItem>
+            {groups.map((candidate) => (
+              <MenuRadioItem key={candidate.projectKey} value={candidate.projectKey} closeOnClick>
+                <span className="flex min-w-0 items-center gap-2">
+                  <ProjectFavicon project={candidate} className="size-4 shrink-0" />
+                  <span className="min-w-0 truncate">{candidate.displayName}</span>
+                </span>
+              </MenuRadioItem>
+            ))}
+          </MenuRadioGroup>
+        </MenuPopup>
+      </Menu>
+    </SidebarMenuItem>
   );
 }
 
 export function SidebarIconRail() {
   const { toggleSidebar } = useSidebar();
   const navigate = useNavigate();
-  const pullRequestsSupported = usePullRequestsSupported();
-  const footer: NavItem[] = [
+  const pageLinks = useSidebarPageLinks();
+  const { groups } = useSidebarProjectScope();
+  const newThreadContext = useHandleNewThread();
+  // Same as the expanded header's button: one project creates at once, several
+  // open the picker, and Shift+click skips it for the current project.
+  const startNewThread = (event: ReactMouseEvent) => {
+    if (shouldCreateNewThreadInCurrentProject(event.shiftKey, groups.length)) {
+      void startNewThreadFromContext({
+        activeDraftThread: newThreadContext.activeDraftThread,
+        activeThread: newThreadContext.activeThread ?? undefined,
+        defaultProjectRef: newThreadContext.defaultProjectRef,
+        handleNewThread: newThreadContext.handleNewThread,
+      });
+      return;
+    }
+    openCommandPalette({ open: "new-thread-in" });
+  };
+  const actions: NavItem[] = [
+    { label: "New thread", icon: <SquarePenIcon />, onSelect: startNewThread },
     {
-      label: "Usage",
-      icon: <ChartNoAxesColumnIcon />,
-      onSelect: () => void navigate({ to: "/usage" }),
+      label: "Add project",
+      icon: <FolderPlusIcon />,
+      onSelect: () => openCommandPalette({ open: "add-project" }),
     },
-    ...(pullRequestsSupported
-      ? [
-          {
-            label: "Pull Requests",
-            icon: <PullRequestGlyph.pullRequest />,
-            onSelect: () =>
-              void navigate({ to: "/pull-requests", search: readPullRequestListPreferences() }),
-          },
-        ]
-      : []),
+  ];
+  const footer: NavItem[] = [
     {
       label: "Settings",
       icon: <SettingsIcon />,
@@ -217,26 +170,36 @@ export function SidebarIconRail() {
       />
       {/* The rail's edge starts below the title bar, which runs across it. */}
       <div className="flex min-h-0 flex-1 flex-col border-r border-border">
-        <SidebarContent
-          className="items-center"
-          fixedHeader={
-            <div className="flex justify-center border-b border-sidebar-border p-2">
-              <SidebarMenu className="items-center">
-                <RailItem
-                  item={{
-                    label: "Search",
-                    icon: <SearchIcon />,
-                    onSelect: () => openCommandPalette(),
-                  }}
-                />
-              </SidebarMenu>
-            </div>
-          }
-        >
-          <RailThreads />
+        <SidebarContent className="items-center">
+          <SidebarMenu className="items-center">
+            <RailItem
+              item={{
+                label: "Search",
+                icon: <SearchIcon />,
+                onSelect: () => openCommandPalette(),
+              }}
+            />
+            <RailProjectFilter />
+            {actions.map((item) => (
+              <RailItem key={item.label} item={item} />
+            ))}
+          </SidebarMenu>
+          <div aria-hidden className="my-1 h-px w-6 shrink-0 self-center bg-sidebar-border" />
+          <SidebarMenu className="items-center">
+            {pageLinks.map((link) => (
+              <RailItem
+                key={link.label}
+                item={{
+                  label: link.label,
+                  icon: link.icon,
+                  active: link.active,
+                  onSelect: link.onSelect,
+                }}
+              />
+            ))}
+          </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="items-center">
-          <div className="mb-1 h-px w-6 shrink-0 bg-sidebar-border" />
           <SidebarMenu className="items-center">
             <RailUndoItem />
             {footer.map((item) => (

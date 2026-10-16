@@ -1,5 +1,5 @@
-/* Glass: shell. The app frame after the reference design: the sidebar and
-   its icon rail, menus, tooltips, toasts, the command bar, settings,
+/* Glass: shell. The app frame after the reference design: title bar tabs,
+   the sidebar and its icon rail, menus, tooltips, toasts, the command bar, settings,
    right panels, and diff colors. This file is inlined before the rest of
    index.css, so rules that compete with an index.css rule carry an extra `html`
    (or `:root`) for specificity. Tailwind utilities live in a layer and lose to
@@ -203,5 +203,75 @@ html :is([data-slot="select-item"], [data-slot="combobox-item"])[data-highlighte
   }
   [data-app-sidebar] [data-slot="sidebar-menu-button"][data-size="icon"]:active {
     transform: none;
+  }
+}
+
+/* Title bar tabs, after MonoCode's strip. A closing tab holds its measured
+   width and folds to zero; an opening one grows from zero to a full slot. The
+   negative margin cancels the strip gap, so neighbors close up exactly. */
+html:root {
+  --motion-reorder-duration: 160ms;
+  --motion-tab-close-duration: 200ms;
+  --motion-tab-ease-out: cubic-bezier(0.3333, 0.6667, 0.6667, 1);
+}
+.reorder-item:is([data-reordering], [data-dragging], [data-settling]) {
+  will-change: transform;
+}
+.reorder-item:is([data-dragging], [data-settling]) {
+  z-index: 10;
+}
+.tab-motion,
+.tab-motion > button {
+  transition:
+    background-color var(--motion-feedback-duration) var(--motion-ease-out),
+    color var(--motion-feedback-duration) var(--motion-ease-out),
+    opacity var(--motion-feedback-duration) var(--motion-ease-out);
+}
+.tab-motion[data-reordering] [data-no-drag] {
+  visibility: hidden;
+}
+.tab-closing,
+.tab-opening {
+  box-sizing: border-box;
+  flex-grow: 0;
+  flex-basis: auto;
+  width: var(--tab-slot-width, 14rem);
+  min-width: var(--tab-slot-min-width, 0);
+  margin-right: 0;
+  overflow: hidden;
+  transition:
+    width var(--motion-tab-close-duration) var(--motion-tab-ease-out),
+    min-width var(--motion-tab-close-duration) var(--motion-tab-ease-out),
+    margin-right var(--motion-tab-close-duration) var(--motion-tab-ease-out);
+}
+.tab-opening {
+  --tab-slot-min-width: 7rem;
+  flex-shrink: 1;
+}
+.tab-closing {
+  flex-shrink: 0;
+  pointer-events: none;
+}
+.tab-closing[data-collapsed],
+.tab-opening[data-collapsed] {
+  width: 0;
+  min-width: 0;
+  margin-right: -0.125rem;
+}
+/* Long labels fade at the end instead of an ellipsis, only while they overflow. */
+.tab-label[data-overflow] {
+  text-overflow: clip;
+  -webkit-mask-image: linear-gradient(to right, #000, #000 calc(100% - 2.5rem), transparent);
+  mask-image: linear-gradient(to right, #000, #000 calc(100% - 2.5rem), transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-motion,
+  .tab-motion > button,
+  .tab-closing,
+  .tab-opening {
+    transition: none;
+  }
+  .tab-closing {
+    display: none;
   }
 }

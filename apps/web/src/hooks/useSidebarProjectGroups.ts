@@ -2,7 +2,10 @@ import { useMemo } from "react";
 
 import { orderItemsByPreferredIds, sortSidebarV2ProjectGroups } from "../components/Sidebar.logic";
 import { getProjectOrderKey, selectProjectGroupingSettings } from "../logicalProject";
-import { buildSidebarProjectSnapshots } from "../sidebarProjectGrouping";
+import {
+  buildSidebarProjectSnapshots,
+  resolveSidebarProjectScopeKey,
+} from "../sidebarProjectGrouping";
 import { useEnvironmentIdentities, usePrimaryEnvironmentId } from "../state/environments";
 import { useProjects, useThreadShells } from "../state/entities";
 import { legacyProjectCwdPreferenceKey, useUiStateStore } from "../uiStateStore";
@@ -46,4 +49,15 @@ export function useSidebarProjectGroups() {
     () => sortSidebarV2ProjectGroups(unsortedGroups, threads, sortOrder),
     [sortOrder, threads, unsortedGroups],
   );
+}
+
+/** The sidebar's project filter, shared by the thread list, its rail, and the tabs. */
+export function useSidebarProjectScope() {
+  const groups = useSidebarProjectGroups();
+  const persistedKey = useUiStateStore((store) => store.sidebarProjectScopeKey);
+  const settings = useClientSettings(selectProjectGroupingSettings);
+  const key = resolveSidebarProjectScopeKey({ groups, key: persistedKey, settings });
+  const group =
+    key === null ? null : (groups.find((candidate) => candidate.projectKey === key) ?? null);
+  return { groups, group };
 }

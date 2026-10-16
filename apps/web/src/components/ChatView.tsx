@@ -461,7 +461,7 @@ import {
   resolveComposerTimelineInset,
   resolveScrollToEndClearance,
 } from "./composerFooterLayout";
-import { ChatHeader } from "./chat/ChatHeader";
+import { ThreadTabs } from "./tabs/ThreadTabs";
 import { useRemoteOpenState } from "~/remoteOpen";
 import { shouldShowOpenInPicker } from "./chat/OpenInPicker.logic";
 import { useOpenFavoriteEditorShortcut } from "./chat/OpenInPickerShortcut";
@@ -11078,17 +11078,19 @@ export default function ChatView(props: ChatViewProps) {
       showThreadPanelControl={showThreadDetails && !inlineRightPanelOwnsTitleBar}
     />
   );
-  const threadPanelHeaderControl = (
+  // The title bar is all tabs. Thread details, the terminal, and opening the
+  // right panel float just under it, at the chat's top right; once the panel is
+  // open, its own title bar carries maximize and close.
+  const chatControlsCluster = rightPanelMaximized ? null : (
     <div
-      // Inset from the chat header's edge, not the window's: --workspace-controls-right also
-      // clears the native window buttons, which sit over the right panel, not this header.
-      className="absolute top-[var(--workspace-controls-top)] right-[calc(env(safe-area-inset-right)+0.75rem)] z-50 flex h-[var(--workspace-topbar-height)] items-center [-webkit-app-region:no-drag]"
+      className="dropdown-glass absolute top-3 right-3 z-30 flex h-8 items-center rounded-lg px-0.5"
       data-workspace-titlebar-controls
+      data-chat-controls-cluster
     >
       <PanelLayoutControls
         {...panelToggleControlProps}
-        showTerminalControl={false}
-        showRightPanelControl={false}
+        showThreadPanelControl={showThreadDetails}
+        showRightPanelControl={!rightPanelOpen}
       />
     </div>
   );
@@ -11123,7 +11125,13 @@ export default function ChatView(props: ChatViewProps) {
           />
         </span>
       ) : null}
-      <div className="pointer-events-auto flex h-full items-center">{panelToggleControls}</div>
+      <div className="pointer-events-auto flex h-full items-center">
+        <PanelLayoutControls
+          {...panelToggleControlProps}
+          showThreadPanelControl={false}
+          showTerminalControl={rightPanelMaximized}
+        />
+      </div>
     </div>
   );
   const workspaceFileDropHandlers = makeWorkspaceFileDropHandlers({
@@ -11177,7 +11185,7 @@ export default function ChatView(props: ChatViewProps) {
             "relative border-b border-border bg-background [[data-panel-animations=true]_&]:motion-safe:transition-[padding-left] [[data-panel-animations=true]_&]:motion-safe:duration-(--panel-animation-duration) [[data-panel-animations=true]_&]:motion-safe:ease-out",
             isElectron
               ? cn(
-                  "drag-region flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center px-3 sm:px-5",
+                  "drag-region flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center pr-2.5 pl-1.5",
                   reserveTitleBarControlInset &&
                     !inlineRightPanelOwnsTitleBar &&
                     "wco:pr-(--workspace-native-controls-inset)",
@@ -11192,22 +11200,7 @@ export default function ChatView(props: ChatViewProps) {
               className="pointer-events-none fixed top-[var(--workspace-controls-top)] right-[var(--workspace-controls-right)] h-[var(--workspace-topbar-height)] w-28 [-webkit-app-region:no-drag]"
             />
           ) : null}
-          {!rightPanelControlsAtRoot && !rightPanelControlsInPanel ? panelLayoutControls : null}
-          {inlineRightPanelOwnsTitleBar && showThreadDetails ? threadPanelHeaderControl : null}
-          <ChatHeader
-            activeThreadEnvironmentId={activeThread.environmentId}
-            activeThreadId={activeThread.id}
-            isServerThread={isServerThread}
-            activeThreadTitle={activeThread.title}
-            activeProject={activeProject ?? null}
-            parentThreadLink={parentThreadLink}
-            onOpenThread={onOpenRelatedThreadStable}
-            rightPanelOpen={inlineRightPanelOwnsTitleBar}
-            onNewThreadInProject={handleNewThreadInActiveProjectStable}
-            {...(activeDraftLogicalProjectKey
-              ? { onOpenProjectSettings: handleOpenDraftProjectSettingsStable }
-              : {})}
-          />
+          <ThreadTabs />
         </header>
 
         {/* Main content area with optional plan sidebar */}
@@ -11240,6 +11233,7 @@ export default function ChatView(props: ChatViewProps) {
               onDragLeave={workspaceFileDropHandlers.onDragLeave}
               onDrop={workspaceFileDropHandlers.onDrop}
             >
+              {chatControlsCluster}
               <ThreadFind onClose={focusComposerStable} />
               {isWorkspaceFileDragActive ? (
                 <div

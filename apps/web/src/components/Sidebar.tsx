@@ -283,7 +283,7 @@ import {
 } from "./ui/combobox";
 import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
-import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
+import { SidebarHeaderRow, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "./ui/menu";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { MiddleTruncate } from "./ui/middle-truncate";
@@ -4992,7 +4992,6 @@ export default function Sidebar() {
           <SidebarGroup className="z-[1]">
             <SidebarThreadHeader
               searchFieldRef={headerSearchRef}
-              hasProjects={projectGroups.length > 0}
               projectScope={
                 <Combobox
                   items={projectScopeItems}
@@ -5020,8 +5019,9 @@ export default function Sidebar() {
                 >
                   <ComboboxTrigger
                     render={
-                      <SidebarHeaderIconButton
-                        label={
+                      <SidebarHeaderRow
+                        label={scopedProjectGroup ? scopedProjectGroup.displayName : "All projects"}
+                        aria-label={
                           scopedProjectGroup
                             ? `Filter threads by project: ${scopedProjectGroup.displayName}`
                             : "Filter threads by project"

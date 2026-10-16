@@ -1,4 +1,10 @@
-import { ArrowLeftIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  BotIcon,
+  CalendarClockIcon,
+  ChartNoAxesColumnIcon,
+  SettingsIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
@@ -157,6 +163,61 @@ function SidebarUtilityItem({
   );
 }
 
+export interface SidebarPageLink {
+  readonly label: string;
+  readonly icon: ReactNode;
+  readonly active: boolean;
+  readonly onSelect: () => void;
+}
+
+/**
+ * The pages the sidebar opens, shared by the expanded list and the collapsed
+ * rail: Pull Requests, Usage, Scheduled tasks, and Providers.
+ */
+export function useSidebarPageLinks(): readonly SidebarPageLink[] {
+  const navigate = useNavigate();
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const { isMobile, setOpenMobile } = useSidebar();
+  const pullRequestsSupported = usePullRequestsSupported();
+  const go = (open: () => void) => () => {
+    if (isMobile) setOpenMobile(false);
+    open();
+  };
+  return [
+    ...(pullRequestsSupported
+      ? [
+          {
+            label: "Pull Requests",
+            icon: <PullRequestGlyph.pullRequest />,
+            active: pathname === "/pull-requests",
+            onSelect: go(
+              () =>
+                void navigate({ to: "/pull-requests", search: readPullRequestListPreferences() }),
+            ),
+          },
+        ]
+      : []),
+    {
+      label: "Usage",
+      icon: <ChartNoAxesColumnIcon />,
+      active: pathname === "/usage",
+      onSelect: go(() => void navigate({ to: "/usage" })),
+    },
+    {
+      label: "Scheduled tasks",
+      icon: <CalendarClockIcon />,
+      active: pathname === "/settings/scheduled-tasks",
+      onSelect: go(() => void navigate({ to: "/settings/scheduled-tasks" })),
+    },
+    {
+      label: "Providers",
+      icon: <BotIcon />,
+      active: pathname === "/settings/providers",
+      onSelect: go(() => void navigate({ to: "/settings/providers" })),
+    },
+  ];
+}
+
 export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   const navigate = useNavigate();
   const navigateToMainApp = useNavigateToMainApp();
@@ -164,36 +225,22 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   const isOnUtilityPage = useLocation({
     select: (location) => isSidebarUtilityPage(location.pathname),
   });
-  const pullRequestsSupported = usePullRequestsSupported();
   const closeMobileSidebar = useCallback(() => {
     if (isMobile) {
       setOpenMobile(false);
     }
   }, [isMobile, setOpenMobile]);
-  const handlePullRequestsClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({
-      to: "/pull-requests",
-      search: readPullRequestListPreferences(),
-    });
-  }, [closeMobileSidebar, navigate]);
   const handleSettingsClick = useCallback(() => {
     closeMobileSidebar();
     void navigate({ to: "/settings" });
   }, [closeMobileSidebar, navigate]);
-
-  const handleUsageClick = useCallback(() => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-    void navigate({ to: "/usage" });
-  }, [isMobile, navigate, setOpenMobile]);
 
   const handleBackClick = useCallback(() => {
     closeMobileSidebar();
     void navigateToMainApp();
   }, [closeMobileSidebar, navigateToMainApp]);
 
+  // Pull Requests and Usage moved up to the sidebar's page links.
   return (
     <SidebarMenu className="flex-row items-center">
       {isOnUtilityPage ? (
@@ -204,25 +251,11 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           </SidebarMenuButton>
         </SidebarMenuItem>
       ) : (
-        <>
-          <SidebarUtilityItem
-            icon={<SettingsIcon />}
-            label="Settings"
-            onClick={handleSettingsClick}
-          />
-          {pullRequestsSupported ? (
-            <SidebarUtilityItem
-              icon={<PullRequestGlyph.pullRequest />}
-              label="Pull Requests"
-              onClick={handlePullRequestsClick}
-            />
-          ) : null}
-          <SidebarUtilityItem
-            icon={<ChartNoAxesColumnIcon />}
-            label="Usage"
-            onClick={handleUsageClick}
-          />
-        </>
+        <SidebarUtilityItem
+          icon={<SettingsIcon />}
+          label="Settings"
+          onClick={handleSettingsClick}
+        />
       )}
       <SidebarUpdatePill />
     </SidebarMenu>
