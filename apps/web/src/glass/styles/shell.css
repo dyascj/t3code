@@ -1,5 +1,5 @@
-/* Glass: shell. The app frame after the reference design: title bar tabs, the
-   sidebar and its icon rail, menus, tooltips, toasts, the command bar, settings,
+/* Glass: shell. The app frame after the reference design: the sidebar and
+   its icon rail, menus, tooltips, toasts, the command bar, settings,
    right panels, and diff colors. This file is inlined before the rest of
    index.css, so rules that compete with an index.css rule carry an extra `html`
    (or `:root`) for specificity. Tailwind utilities live in a layer and lose to
@@ -53,48 +53,6 @@ html:root {
   --diffs-deletion-color-override: var(--diff-deletion);
 }
 
-/* Title bar tabs. Open and close fold the slot's width (and the strip gap)
-   without a fade; the clipped content rides along. */
-@keyframes glass-tab-open {
-  from {
-    width: 0;
-    min-width: 0;
-    margin-right: -0.125rem;
-  }
-  to {
-    width: 14rem;
-    min-width: 7rem;
-    margin-right: 0;
-  }
-}
-html [data-tab-opening] {
-  animation-name: glass-tab-open;
-}
-html [data-tab-closing] {
-  opacity: 1;
-  margin-right: -0.125rem;
-  transition:
-    width var(--motion-tab-duration) var(--motion-tab-ease),
-    min-width var(--motion-tab-duration) var(--motion-tab-ease),
-    margin-right var(--motion-tab-duration) var(--motion-tab-ease);
-}
-/* Long labels fade out at the end instead of an ellipsis. The scroll timeline
-   is only active while the label overflows, so short labels stay unmasked. */
-@supports (animation-timeline: scroll()) {
-  .tab-label {
-    text-overflow: clip;
-    animation: tab-label-overflow linear both;
-    animation-timeline: scroll(self inline);
-  }
-}
-@keyframes tab-label-overflow {
-  from,
-  to {
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
-  }
-}
-
 /* Sidebar rows and the icon rail: 6px corners, text at 50% that lifts to full
    on a 10% hover, the selection fill when current, and icons in the row's own
    color at a 1.75 stroke. Rail icons press in slightly. */
@@ -133,6 +91,19 @@ html [data-tab-closing] {
 }
 [data-app-sidebar] [data-slot="sidebar-menu-button"][data-size="default"] > svg {
   opacity: 0.7;
+}
+
+/* The thread list: rows sit on the glass with the text color at 5% on hover
+   and the selection fill when open, never a solid white or accent block. The
+   search field and other sidebar controls take the same faint fill. */
+html:root:is(:not([data-theme-id]), [data-theme-id=""]) [data-app-sidebar] {
+  --sidebar-row-hover: color-mix(in srgb, var(--foreground) 5%, transparent);
+  --sidebar-row-active: var(--glass-selection);
+  --sidebar-row-selected: color-mix(in srgb, var(--foreground) 7%, transparent);
+  --sidebar-control-surface: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+[data-app-sidebar] [data-thread-item] [data-testid^="sidebar-row-"] {
+  transition: background-color var(--motion-feedback-duration) var(--motion-ease-out);
 }
 
 /* Menus: 32px rows with 14px icons at 55%, a 5% highlight like a hover, and

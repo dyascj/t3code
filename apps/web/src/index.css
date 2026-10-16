@@ -2731,9 +2731,7 @@ html.has-chat-background.chat-background-effect-ready.chat-background-gradient-b
 :root {
   --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-surface-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --motion-tab-ease: cubic-bezier(0.3333, 0.6667, 0.6667, 1);
   --motion-feedback-duration: 120ms;
-  --motion-tab-duration: 200ms;
   --glass-hairline: color-mix(in srgb, var(--foreground) 10%, transparent);
   --glass-fill-faint: color-mix(in srgb, var(--foreground) 2%, transparent);
   /* Neutral smoke under floating glass, so busy artwork never reads through. */
@@ -2976,35 +2974,6 @@ html:not(.dark) [data-slot="composer-host"] {
 ):not([data-ending-style]) {
   animation: scrim-open 160ms ease-out both;
 }
-/* Tabs grow in and fold away along their width. */
-/* Width, not max-width: a tab has no max-width to animate from. */
-@keyframes tab-open {
-  from {
-    width: 0;
-    min-width: 0;
-    opacity: 0;
-  }
-  to {
-    width: 14rem;
-    min-width: 7rem;
-    opacity: 1;
-  }
-}
-[data-tab-opening] {
-  overflow: hidden;
-  animation: tab-open var(--motion-tab-duration) var(--motion-tab-ease) backwards;
-}
-[data-tab-closing] {
-  overflow: hidden;
-  pointer-events: none;
-  width: 0 !important;
-  min-width: 0 !important;
-  opacity: 0;
-  transition:
-    width var(--motion-tab-duration) var(--motion-tab-ease),
-    min-width var(--motion-tab-duration) var(--motion-tab-ease),
-    opacity var(--motion-tab-duration) var(--motion-tab-ease);
-}
 @media (prefers-reduced-motion: reduce) {
   :is(
     [data-slot="menu-popup"],
@@ -3016,12 +2985,8 @@ html:not(.dark) [data-slot="composer-host"] {
     [data-slot="command-dialog-popup"],
     [data-slot="dialog-backdrop"],
     [data-slot="alert-dialog-backdrop"],
-    [data-slot="command-dialog-backdrop"],
-    [data-tab-opening]
+    [data-slot="command-dialog-backdrop"]
   ) {
     animation: none !important;
-  }
-  [data-tab-closing] {
-    display: none;
   }
 }

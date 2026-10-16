@@ -30,17 +30,19 @@ import { resolveThreadRouteRef } from "../threadRoutes";
 import { cn, isMacPlatform } from "../lib/utils";
 import { primaryServerKeybindingsAtom } from "../state/server";
 import { useBackgroundFlipShortcut } from "../glass/useBackgroundFlipShortcut";
-import { useEnvironmentIdentificationMode } from "../hooks/useSettings";
+import { useEnvironmentIdentificationMode, useLegacySidebarEnabled } from "../hooks/useSettings";
 import {
   PanelAnimationSuppressionProvider,
   usePanelAnimationSettings,
   usePanelNavigationSuppression,
 } from "../panelAnimations";
+import LegacyThreadSidebar from "./LegacySidebar";
 import { useThreadVisitedMigration } from "../hooks/useThreadVisitedMigration";
+import ThreadSidebar from "./Sidebar";
 import { SettingsIconRail, SettingsSidebarNav } from "./settings/SettingsSidebarNav";
 import { SidebarBrandWidthProbe, SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { HistoryNavButtons } from "./sidebar/HistoryNavButtons";
-import { SidebarIconRail, SidebarNavPanel } from "./sidebar/SidebarIconRail";
+import { SidebarIconRail } from "./sidebar/SidebarIconRail";
 import { MainAppLocationTracker } from "./sidebar/mainAppLocation";
 import { useSidebarStageBackdropVariant } from "./SidebarStageBackdrop";
 import { useProjects } from "../state/entities";
@@ -252,15 +254,16 @@ function ProjectProjectionRetention() {
   return null;
 }
 
-// The sidebar starts collapsed to its icon rail (threads live in the title bar
-// tabs); whatever the user last chose is kept per device.
-const SIDEBAR_OPEN_STORAGE_KEY = "t3code:sidebar-open:v1";
+// The sidebar starts open on the thread list and collapses to its icon rail;
+// whatever the user last chose is kept per device.
+const SIDEBAR_OPEN_STORAGE_KEY = "t3code:sidebar-open:v2";
 
 export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const legacySidebarEnabled = useLegacySidebarEnabled();
   useBackgroundFlipShortcut();
   const [sidebarOpen, setSidebarOpen] = useState(
-    () => getLocalStorageItem(SIDEBAR_OPEN_STORAGE_KEY, Schema.Boolean) ?? false,
+    () => getLocalStorageItem(SIDEBAR_OPEN_STORAGE_KEY, Schema.Boolean) ?? true,
   );
   const handleSidebarOpenChange = (open: boolean) => {
     setSidebarOpen(open);
@@ -384,9 +387,10 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
                 <SidebarChromeHeader isElectron={isElectron} />
                 <SettingsSidebarNav pathname={pathname} />
               </>
+            ) : legacySidebarEnabled ? (
+              <LegacyThreadSidebar />
             ) : (
-              // Threads live in the title bar tabs; the sidebar is navigation only.
-              <SidebarNavPanel />
+              <ThreadSidebar />
             )}
           </CollapsibleSidebarContent>
           <SidebarRail onDoubleClick={resetSidebarWidth} />
