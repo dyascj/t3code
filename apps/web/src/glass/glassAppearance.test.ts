@@ -23,8 +23,7 @@ describe("normalizeGlassAppearance", () => {
       blurRadius: 12.6,
       backgroundEmptyOpacity: 1,
       backgroundSessionOpacity: 0,
-      backgroundFocusX: -20,
-      backgroundFocusY: 33.4,
+      backgroundFocus: [{ x: -20, y: 33.4 }, { x: 140 }],
     });
     expect(normalized).toMatchObject({
       hue: 360,
@@ -34,9 +33,22 @@ describe("normalizeGlassAppearance", () => {
       blurRadius: 13,
       backgroundEmptyOpacity: 0.65,
       backgroundSessionOpacity: 0.05,
-      backgroundFocusX: 0,
-      backgroundFocusY: 33,
+      backgroundFocus: [
+        { x: 0, y: 33 },
+        { x: 100, y: 50 },
+        { x: 50, y: 50 },
+      ],
     });
+  });
+
+  it("starts every slot from the old shared focal point", () => {
+    expect(
+      normalizeGlassAppearance({ backgroundFocusX: 20, backgroundFocusY: 70 }).backgroundFocus,
+    ).toEqual([
+      { x: 20, y: 70 },
+      { x: 20, y: 70 },
+      { x: 20, y: 70 },
+    ]);
   });
 
   it("keeps valid choices", () => {

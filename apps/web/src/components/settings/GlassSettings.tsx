@@ -1,6 +1,13 @@
 import { useAtomValue } from "@effect/atom-react";
 import { ImagePlusIcon } from "lucide-react";
-import { type CSSProperties, type ReactNode, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import { isElectron } from "../../env";
 import {
@@ -8,7 +15,9 @@ import {
   BACKGROUND_EFFECT_DESCRIPTIONS,
   BACKGROUND_EFFECT_LABELS,
   type BackgroundEffect,
+  type BackgroundFocus,
   type ChatBackgroundScope,
+  DEFAULT_BACKGROUND_FOCUS,
   DEFAULT_GLASS_APPEARANCE,
   GLASS_LIMITS,
   type GlassAppearance,
@@ -21,7 +30,9 @@ import {
   BACKGROUND_SLOTS,
   isBackgroundSlot,
   setChatBackgroundSlot,
+  showingBackgroundFocus,
   subscribeGlassState,
+  updateBackgroundFocus,
   updateGlassAppearance,
 } from "../../glass/glassAppearance";
 import { GradientBlurBackground } from "../../glass/GradientBlurBackground";
@@ -32,6 +43,14 @@ import { shortcutLabelForCommand } from "../../keybindings";
 import { isMacPlatform } from "../../lib/utils";
 import { primaryServerKeybindingsAtom } from "../../state/server";
 import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
+  DialogTitle,
+} from "../ui/dialog";
 import { Spinner } from "../ui/spinner";
 import { Switch } from "../ui/switch";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
@@ -369,47 +388,42 @@ export function BackgroundImagePicker({
   );
 }
 
-export interface BackgroundFocus {
-  readonly x: number;
-  readonly y: number;
-}
-
 const FOCUS_KEY_STEP = 5;
 
 /**
- * The whole image as a thumbnail. Clicking or arrow keys move the focal point,
- * and the marker shows where it is on the image itself.
+ * The whole image with a marker on the focal point. Click, drag, or use the
+ * arrow keys to move it.
  */
-function FocusPointPicker({
+function FocusPointSurface({
   imageUrl,
-  imageAspect,
   focus,
   onChange,
 }: {
   imageUrl: string;
-  imageAspect: number | null;
   focus: BackgroundFocus;
   onChange: (focus: BackgroundFocus) => void;
 }) {
   const clamp = (value: number) => Math.round(Math.min(100, Math.max(0, value)));
+  const moveTo = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    onChange({
+      x: clamp(((event.clientX - box.left) / box.width) * 100),
+      y: clamp(((event.clientY - box.top) / box.height) * 100),
+    });
+  };
   return (
-    <button
-      type="button"
-      aria-label={`Focal point, ${focus.x}% from the left and ${focus.y}% from the top`}
-      className="relative h-16 shrink-0 cursor-crosshair overflow-hidden rounded-md border border-border bg-no-repeat outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      style={{
-        aspectRatio: imageAspect ?? 16 / 9,
-        backgroundImage: `url(${JSON.stringify(imageUrl)})`,
-        backgroundSize: "100% 100%",
+    <div
+      role="slider"
+      tabIndex={0}
+      aria-label="Focal point"
+      aria-valuetext={`${focus.x}% from the left, ${focus.y}% from the top`}
+      className="relative cursor-crosshair touch-none overflow-hidden rounded-md border border-border outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+      onPointerDown={(event) => {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        moveTo(event);
       }}
-      onClick={(event) => {
-        // Enter and Space click at (0, 0); the arrow keys move the point instead.
-        if (event.detail === 0) return;
-        const box = event.currentTarget.getBoundingClientRect();
-        onChange({
-          x: clamp(((event.clientX - box.left) / box.width) * 100),
-          y: clamp(((event.clientY - box.top) / box.height) * 100),
-        });
+      onPointerMove={(event) => {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) moveTo(event);
       }}
       onKeyDown={(event) => {
         const delta = {
@@ -423,12 +437,76 @@ function FocusPointPicker({
         onChange({ x: clamp(focus.x + delta[0]!), y: clamp(focus.y + delta[1]!) });
       }}
     >
+      <img alt="" draggable={false} src={imageUrl} className="block max-h-[65vh] max-w-full" />
       <span
         aria-hidden
-        className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm ring-1 ring-black/40"
+        className="pointer-events-none absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm ring-1 ring-black/40"
         style={{ left: `${focus.x}%`, top: `${focus.y}%` }}
       />
-    </button>
+    </div>
+  );
+}
+
+/** A thumbnail of the focal point that opens a large view to place it. */
+function FocusPointPicker({
+  imageUrl,
+  imageAspect,
+  slot,
+  focus,
+  onChange,
+}: {
+  imageUrl: string;
+  imageAspect: number | null;
+  slot: number;
+  focus: BackgroundFocus;
+  onChange: (focus: BackgroundFocus) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={`Set the focal point, now ${focus.x}% from the left and ${focus.y}% from the top`}
+        className="relative h-20 shrink-0 cursor-zoom-in overflow-hidden rounded-md border border-border bg-no-repeat outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        style={{
+          aspectRatio: imageAspect ?? 16 / 9,
+          backgroundImage: `url(${JSON.stringify(imageUrl)})`,
+          backgroundSize: "100% 100%",
+        }}
+        onClick={() => setOpen(true)}
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm ring-1 ring-black/40"
+          style={{ left: `${focus.x}%`, top: `${focus.y}%` }}
+        />
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogPopup className="max-w-[min(64rem,calc(100vw-2rem))]">
+          <DialogHeader>
+            <DialogTitle>Focal point for background {slot}</DialogTitle>
+            <DialogDescription>
+              Click or drag to the part of the image to keep in view. Arrow keys nudge it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center px-6">
+            <FocusPointSurface imageUrl={imageUrl} focus={focus} onChange={onChange} />
+          </div>
+          <DialogFooter variant="bare">
+            <Button
+              variant="outline"
+              disabled={
+                focus.x === DEFAULT_BACKGROUND_FOCUS.x && focus.y === DEFAULT_BACKGROUND_FOCUS.y
+              }
+              onClick={() => onChange(DEFAULT_BACKGROUND_FOCUS)}
+            >
+              Center
+            </Button>
+            <Button onClick={() => setOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogPopup>
+      </Dialog>
+    </>
   );
 }
 
@@ -456,7 +534,9 @@ const BACKGROUND_SLOT_OPTIONS = BACKGROUND_SLOTS.map((slot) => ({
 }));
 
 export function ChatBackgroundSettingsSection() {
-  const { appearance: a, imageUrl, imageRevision, imageAspect, backgroundSlot } = useGlassState();
+  const glass = useGlassState();
+  const { appearance: a, imageUrl, imageRevision, imageAspect, backgroundSlot } = glass;
+  const focus = showingBackgroundFocus(glass);
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const flipShortcut = shortcutLabelForCommand(keybindings, "background.flip");
   const previewUrl = useBackgroundEffectUrl(
@@ -519,18 +599,22 @@ export function ChatBackgroundSettingsSection() {
           />
           <SettingsRow
             title="Focal point"
-            description="Click the part of the image to keep in view. Chats and Home center on it as far as the image allows."
+            description="The part of this background to keep in view; each background has its own. Click the image to place it."
             resetAction={
-              <ResetButton label="focal point" keys={["backgroundFocusX", "backgroundFocusY"]} />
+              focus.x !== DEFAULT_BACKGROUND_FOCUS.x || focus.y !== DEFAULT_BACKGROUND_FOCUS.y ? (
+                <SettingResetButton
+                  label="focal point"
+                  onClick={() => updateBackgroundFocus(DEFAULT_BACKGROUND_FOCUS)}
+                />
+              ) : null
             }
             control={
               <FocusPointPicker
                 imageUrl={imageUrl}
                 imageAspect={imageAspect}
-                focus={{ x: a.backgroundFocusX, y: a.backgroundFocusY }}
-                onChange={({ x, y }) =>
-                  updateGlassAppearance({ backgroundFocusX: x, backgroundFocusY: y })
-                }
+                slot={backgroundSlot}
+                focus={focus}
+                onChange={updateBackgroundFocus}
               />
             }
           />

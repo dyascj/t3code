@@ -16,6 +16,13 @@ import { deleteImage, readImage, writeImage } from "./imageStore";
 export type { BackgroundEffect };
 export type ChatBackgroundScope = "empty" | "all";
 
+/** A focal point, in percent from the image's left and top edges. */
+export interface BackgroundFocus {
+  readonly x: number;
+  readonly y: number;
+}
+export const DEFAULT_BACKGROUND_FOCUS: BackgroundFocus = { x: 50, y: 50 };
+
 export interface GlassAppearance {
   readonly hue: number;
   readonly saturation: number;
@@ -29,9 +36,8 @@ export interface GlassAppearance {
   readonly backgroundScope: ChatBackgroundScope;
   readonly backgroundEmptyOpacity: number;
   readonly backgroundSessionOpacity: number;
-  /** The global image's focal point, in percent from its left and top edges. */
-  readonly backgroundFocusX: number;
-  readonly backgroundFocusY: number;
+  /** Each background slot's focal point, slot 1 first. */
+  readonly backgroundFocus: readonly [BackgroundFocus, BackgroundFocus, BackgroundFocus];
 }
 
 export const GLASS_LIMITS = {
@@ -56,8 +62,7 @@ export const DEFAULT_GLASS_APPEARANCE: GlassAppearance = {
   backgroundScope: "all",
   backgroundEmptyOpacity: 0.24,
   backgroundSessionOpacity: 0.24,
-  backgroundFocusX: 50,
-  backgroundFocusY: 50,
+  backgroundFocus: [DEFAULT_BACKGROUND_FOCUS, DEFAULT_BACKGROUND_FOCUS, DEFAULT_BACKGROUND_FOCUS],
 };
 
 export const BACKGROUND_EFFECTS: readonly BackgroundEffect[] = [
@@ -135,6 +140,15 @@ export function clampBackgroundOpacity(value: unknown, fallback: number): number
   return clampNumber(value, min, max, fallback);
 }
 
+function normalizeFocus(raw: unknown, fallback: BackgroundFocus): BackgroundFocus {
+  const input = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+  const { min, max } = GLASS_LIMITS.backgroundFocus;
+  return {
+    x: Math.round(clampNumber(input.x, min, max, fallback.x)),
+    y: Math.round(clampNumber(input.y, min, max, fallback.y)),
+  };
+}
+
 export function normalizeGlassAppearance(raw: unknown): GlassAppearance {
   const input = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
   const d = DEFAULT_GLASS_APPEARANCE;
@@ -172,23 +186,23 @@ export function normalizeGlassAppearance(raw: unknown): GlassAppearance {
       input.backgroundSessionOpacity,
       d.backgroundSessionOpacity,
     ),
-    backgroundFocusX: Math.round(
-      clampNumber(
-        input.backgroundFocusX,
-        L.backgroundFocus.min,
-        L.backgroundFocus.max,
-        d.backgroundFocusX,
-      ),
-    ),
-    backgroundFocusY: Math.round(
-      clampNumber(
-        input.backgroundFocusY,
-        L.backgroundFocus.min,
-        L.backgroundFocus.max,
-        d.backgroundFocusY,
-      ),
-    ),
+    backgroundFocus: normalizeSlotFocus(input),
   };
+}
+
+// Before focal points were per slot, one backgroundFocusX/Y pair served all
+// three; each slot starts from it so nothing moves on upgrade.
+function normalizeSlotFocus(input: Record<string, unknown>): GlassAppearance["backgroundFocus"] {
+  const shared = normalizeFocus(
+    { x: input.backgroundFocusX, y: input.backgroundFocusY },
+    DEFAULT_BACKGROUND_FOCUS,
+  );
+  const stored = Array.isArray(input.backgroundFocus) ? input.backgroundFocus : [];
+  return [
+    normalizeFocus(stored[0], shared),
+    normalizeFocus(stored[1], shared),
+    normalizeFocus(stored[2], shared),
+  ];
 }
 
 // The defaults changed to a deeper, clearer glass with Haze on. Once per device,
@@ -318,6 +332,16 @@ const decodeChannel = (value: number) =>
 
 let appliedBlurRadius: number | null = null;
 
+/** The focal point of the background that's showing. */
+export const showingBackgroundFocus = (s: GlassState = state): BackgroundFocus =>
+  s.appearance.backgroundFocus[s.backgroundSlot - 1]!;
+
+// The root fallback position; framed elements refine it with focalBackgroundPosition.
+function applyFocusPosition() {
+  const { x, y } = showingBackgroundFocus();
+  document.documentElement.style.setProperty("--chat-background-position", `${x}% ${y}%`);
+}
+
 function applyAppearance(previous: GlassAppearance | null) {
   const a = state.appearance;
   const style = document.documentElement.style;
@@ -327,7 +351,7 @@ function applyAppearance(previous: GlassAppearance | null) {
   style.setProperty("--sidebar-opacity", String(a.sidebarOpacity));
   style.setProperty("--chat-background-empty-opacity", String(a.backgroundEmptyOpacity));
   style.setProperty("--chat-background-session-opacity", String(a.backgroundSessionOpacity));
-  style.setProperty("--chat-background-position", `${a.backgroundFocusX}% ${a.backgroundFocusY}%`);
+  applyFocusPosition();
   const root = document.documentElement;
   root.classList.toggle("glass-body", a.mainPaneGlass);
   root.classList.toggle("chat-background-empty-only", a.backgroundScope === "empty");
@@ -353,6 +377,17 @@ export function updateGlassAppearance(patch: Partial<GlassAppearance>) {
   }
   setState({ ...state, appearance });
   applyAppearance(previous);
+}
+
+/** Moves the focal point of the background that's showing. */
+export function updateBackgroundFocus(focus: BackgroundFocus) {
+  const backgroundFocus = [...state.appearance.backgroundFocus] as [
+    BackgroundFocus,
+    BackgroundFocus,
+    BackgroundFocus,
+  ];
+  backgroundFocus[state.backgroundSlot - 1] = focus;
+  updateGlassAppearance({ backgroundFocus });
 }
 
 export function resetGlassAppearance(keys: readonly (keyof GlassAppearance)[]) {
@@ -463,6 +498,7 @@ export async function setChatBackgroundSlot(slot: BackgroundSlot): Promise<void>
     // Private mode or quota: the flip still applies for this session.
   }
   setState({ ...state, backgroundSlot: slot });
+  applyFocusPosition();
   const entry = await loadSlot(slot).catch((error: unknown) => {
     console.error("Could not load the chat background image.", error);
     return null;

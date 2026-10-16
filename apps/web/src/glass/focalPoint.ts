@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getGlassState, subscribeGlassState } from "./glassAppearance";
+import { getGlassState, showingBackgroundFocus, subscribeGlassState } from "./glassAppearance";
 
 /**
  * The cover background-position that brings a focal point (percent of the
@@ -37,15 +37,11 @@ export function useFocalBackgroundRef(enabled = true) {
     if (!element || !enabled) return;
     let written: string | null = null;
     const update = () => {
-      const { appearance, imageAspect } = getGlassState();
+      const glass = getGlassState();
+      const { imageAspect } = glass;
       const { width, height } = element.getBoundingClientRect();
       if (imageAspect === null || width === 0 || height === 0) return;
-      written = focalBackgroundPosition(
-        { x: appearance.backgroundFocusX, y: appearance.backgroundFocusY },
-        imageAspect,
-        width,
-        height,
-      );
+      written = focalBackgroundPosition(showingBackgroundFocus(glass), imageAspect, width, height);
       element.style.setProperty("--chat-background-position", written);
     };
     update();

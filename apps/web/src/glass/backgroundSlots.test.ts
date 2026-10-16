@@ -31,7 +31,8 @@ beforeAll(() => {
     setItem: (key: string, value: string) => void store.set(key, value),
   });
   const classList = { toggle() {}, add() {}, remove() {}, contains: () => true };
-  vi.stubGlobal("document", { documentElement: { classList } });
+  const style = { setProperty() {} };
+  vi.stubGlobal("document", { documentElement: { classList, style } });
   let next = 0;
   URL.createObjectURL = () => `blob:test/${++next}`;
   URL.revokeObjectURL = () => {};

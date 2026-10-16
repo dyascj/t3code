@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, ChartNoAxesColumnIcon, HouseIcon, SettingsIcon } from "lucide-react";
+import { ArrowLeftIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
@@ -177,10 +177,6 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
       search: readPullRequestListPreferences(),
     });
   }, [closeMobileSidebar, navigate]);
-  const handleHomeClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({ to: "/" });
-  }, [closeMobileSidebar, navigate]);
   const handleSettingsClick = useCallback(() => {
     closeMobileSidebar();
     void navigate({ to: "/settings" });
@@ -209,7 +205,6 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
         </SidebarMenuItem>
       ) : (
         <>
-          <SidebarUtilityItem icon={<HouseIcon />} label="Home" onClick={handleHomeClick} />
           <SidebarUtilityItem
             icon={<SettingsIcon />}
             label="Settings"
