@@ -110,6 +110,12 @@ const makeInstance = Effect.gen(function* () {
       signIn: makeSignIn,
       isRepositoryStarred: makeIsRepositoryStarred,
       starRepository: makeStarRepository,
+      restGet: Effect.map(
+        GitHubRest.GitHubRest,
+        (api) =>
+          (input: { readonly host: string; readonly operation: string; readonly path: string }) =>
+            api.rest(input).pipe(Effect.map((response) => response.body)),
+      ),
     }),
     services,
   );

@@ -15,6 +15,11 @@ import { LinkRequestCard } from "./LinkRequestCard";
 import { SecretRequestCard } from "./SecretRequestCard";
 import { TimelineRowCtx, type TimelineRow } from "./timelineRowContext";
 import { subagentGroupTiming } from "./TimelineV2EventRow.logic";
+import {
+  CONSTELLATION_MS,
+  OrchestratorConstellation,
+  useOneShotEntrance,
+} from "./timelineEntrances";
 
 export function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event" }> }) {
   const ctx = use(TimelineRowCtx);
@@ -80,6 +85,7 @@ const V2SubagentGroup = memo(function V2SubagentGroup({
     };
   });
   const summary = subagentGroupSummary(agents);
+  const entering = useOneShotEntrance(row.id, row.createdAt, CONSTELLATION_MS);
   const label = `${members.length} ${members.length === 1 ? "subagent" : "subagents"}`;
   const statusSummary = summarizeSubagentStatuses(agents.map(({ status }) => status));
   const toggleExpanded = (open: boolean) => {
@@ -90,13 +96,18 @@ const V2SubagentGroup = memo(function V2SubagentGroup({
   };
   return (
     <WorkLogBlock continues={row.continuesWorkLog}>
-      <Collapsible open={expanded} onOpenChange={toggleExpanded} data-subagent-group>
+      <Collapsible
+        open={expanded}
+        onOpenChange={toggleExpanded}
+        data-subagent-group
+        data-agent-spawn=""
+      >
         {/* pr-3.25 matches the panel border, padding, and row inset so the times line up. */}
         <CollapsibleTrigger
           aria-label={label}
           aria-description={statusSummary}
           className={cn(
-            "flex w-full min-w-0 items-center gap-2.5 py-2 pr-3.25 text-left transition-opacity hover:opacity-100",
+            "relative flex w-full min-w-0 items-center gap-2.5 py-2 pr-3.25 text-left transition-opacity hover:opacity-100",
             expanded || summary.active
               ? "text-foreground opacity-100"
               : "text-muted-foreground opacity-55",
@@ -114,7 +125,7 @@ const V2SubagentGroup = memo(function V2SubagentGroup({
               />
             ))}
             {agents.length > 3 ? (
-              <span className="relative inline-flex size-6 items-center justify-center rounded-full bg-muted text-3xs font-medium text-muted-foreground ring-2 ring-background">
+              <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-foreground/10 bg-foreground/5 text-3xs font-medium text-muted-foreground ring-2 ring-background">
                 +{agents.length - 3}
               </span>
             ) : null}
@@ -140,11 +151,12 @@ const V2SubagentGroup = memo(function V2SubagentGroup({
               expanded && "rotate-180",
             )}
           />
+          {entering && summary.active ? <OrchestratorConstellation /> : null}
         </CollapsibleTrigger>
         {/* Virtualized rows must settle before disclosure scroll anchoring resumes. */}
         <CollapsiblePanel animate={false}>
           {expanded ? (
-            <div className="mt-1 mb-1 rounded-lg border border-border/60 bg-card/30 p-1">
+            <div className="mt-1 mb-1 rounded-lg border border-foreground/10 bg-foreground/[0.03] p-1">
               {members.map((item) => (
                 <V2LifecycleRow
                   environmentId={ctx.activeThreadEnvironmentId}

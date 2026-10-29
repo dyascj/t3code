@@ -21,6 +21,7 @@ import { getDesktopUrl } from "../electron/ElectronProtocol.ts";
 import * as ElectronShell from "../electron/ElectronShell.ts";
 import * as ElectronTheme from "../electron/ElectronTheme.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
+import * as MacWindowGlass from "../electron/MacWindowGlass.ts";
 import {
   MENU_ACTION_CHANNEL,
   QUIT_SHORTCUT_CHANNEL,
@@ -161,6 +162,15 @@ function getInitialWindowBackgroundColor(shouldUseDarkColors: boolean): string {
   return shouldUseDarkColors ? "#000000" : "#ffffff";
 }
 
+// macOS glass: the window stays clear so the WindowServer blur shows through,
+// and the renderer paints a translucent tint over it in dark mode.
+function getMainWindowBackgroundColor(
+  shouldUseDarkColors: boolean,
+  platform: NodeJS.Platform,
+): string {
+  return platform === "darwin" ? "#00000000" : getInitialWindowBackgroundColor(shouldUseDarkColors);
+}
+
 type DisplayBounds = Pick<Electron.Rectangle, "x" | "y" | "width" | "height">;
 
 // A window snapped to a display edge can be reported 1px past that edge.
@@ -295,7 +305,10 @@ function syncWindowAppearance(
       return;
     }
 
-    window.setBackgroundColor(getInitialWindowBackgroundColor(shouldUseDarkColors));
+    window.setBackgroundColor(getMainWindowBackgroundColor(shouldUseDarkColors, platform));
+    if (platform === "darwin") {
+      void MacWindowGlass.keepMacWindowCorners(window);
+    }
     const { titleBarOverlay } = getWindowTitleBarOptions(shouldUseDarkColors, platform);
     if (typeof titleBarOverlay === "object") {
       window.setTitleBarOverlay(titleBarOverlay);
@@ -422,8 +435,10 @@ export const make = Effect.gen(function* () {
       minHeight: DesktopAppSettings.MIN_MAIN_WINDOW_SIZE.height,
       show: false,
       autoHideMenuBar: true,
-      ...(environment.platform === "darwin" ? { disableAutoHideCursor: true } : {}),
-      backgroundColor: getInitialWindowBackgroundColor(shouldUseDarkColors),
+      ...(environment.platform === "darwin"
+        ? { disableAutoHideCursor: true, transparent: true }
+        : {}),
+      backgroundColor: getMainWindowBackgroundColor(shouldUseDarkColors, environment.platform),
       ...iconOption,
       title: environment.displayName,
       ...getWindowTitleBarOptions(shouldUseDarkColors, environment.platform),
@@ -449,6 +464,11 @@ export const make = Effect.gen(function* () {
     yield* rendererHistory.register(window.webContents, { surface: "main" });
     if (environment.platform === "darwin") {
       window.setAutoHideCursor(false);
+      // The renderer re-applies the saved radius once it loads.
+      void MacWindowGlass.setMacWindowBlurRadius(
+        window,
+        MacWindowGlass.MAC_WINDOW_BLUR_RADIUS_DEFAULT,
+      );
     }
     let boundsPersistFiber: Fiber.Fiber<void, never> | undefined;
     let pendingBoundsPersistFiber: Fiber.Fiber<void, never> | undefined;

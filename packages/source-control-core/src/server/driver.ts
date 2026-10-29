@@ -69,6 +69,12 @@ export interface SourceControlDriverInstance {
   readonly isRepositoryStarred?: (host: string, repository: string) => Effect.Effect<boolean>;
   /** Stars `repository` as the server's account on `host`; false when the forge refused. */
   readonly starRepository?: (host: string, repository: string) => Effect.Effect<boolean>;
+  /** A GET against the host's REST API with the server's credential; resolves to the body. */
+  readonly restGet?: (input: {
+    readonly host: string;
+    readonly operation: string;
+    readonly path: string;
+  }) => Effect.Effect<string, Error>;
 }
 
 /** What the server gives every driver. A driver builds anything else it needs itself. */

@@ -57,6 +57,7 @@ import { MessageCopyButton } from "./MessageCopyButton";
 import { promptLinkFor } from "../promptLinks/copyPromptLink";
 import { PierreEntryIcon } from "./PierreEntryIcon";
 import { formatBytes } from "../../lib/formatBytes";
+import { PROMPT_RISE_MS, useOneShotEntrance } from "./timelineEntrances";
 import { shouldCollapseUserMessage } from "./MessagesTimeline.logic";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
@@ -331,7 +332,7 @@ function AutomationMessageRow({ row }: { row: Extract<TimelineRow, { kind: "mess
       </div>
       <UserMessageProjectedStatus row={row} />
       {expanded ? (
-        <div className="flex w-full max-w-[80%] items-center justify-end pe-1 text-xs tabular-nums opacity-0 transition-opacity duration-200 pointer-coarse:opacity-100 focus-within:opacity-100 group-hover:opacity-100">
+        <div className="flex w-full max-w-[80%] items-center justify-end pe-1 text-xs tabular-nums opacity-0 transition-opacity duration-150 pointer-coarse:opacity-100 focus-within:opacity-100 group-hover:opacity-100">
           <div className="flex shrink-0 items-center gap-2">
             {scheduledTaskId ? (
               <Link
@@ -468,6 +469,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
   const resolvedContext = resolveUserMessageContext({ ...row.message, text: userMessage.text });
   const previewImages = userImages.filter((image) => image.name.startsWith("preview-annotation-"));
   const revertTurnCount = row.revertTurnCount;
+  const entering = useOneShotEntrance(row.message.id, row.message.createdAt, PROMPT_RISE_MS);
   const attachmentReferences = collectComposerContextReferences(resolvedContext.text).flatMap(
     (occurrence) => {
       const record = asKnownContextRecord(resolvedContext.recordsById.get(occurrence.contextId));
@@ -715,7 +717,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
                       )
                     : standaloneMedia
                       ? cn(MEDIA_EDGE_CLASS_NAME, "aspect-[4/3] overflow-hidden rounded-2xl")
-                      : "aspect-[4/3] overflow-hidden rounded-lg border border-border/80",
+                      : "aspect-[4/3] overflow-hidden rounded-lg border border-foreground/10",
             )}
           >
             {image.previewUrl ? (
@@ -831,6 +833,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
     <div
       className="group @container flex flex-col items-end gap-1"
       data-user-message-attribution={folded ? "agent" : undefined}
+      data-user-message-entering={entering ? "" : undefined}
     >
       {userMessage.attribution === "t3code" ? (
         <p
@@ -873,6 +876,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
           !folded && !mediaOnly && !fileCardsOnly && !audioOnly && "p-3",
           folded && expanded && "w-full",
         )}
+        data-user-message-bubble="sent"
       >
         {/* Outside the fold so a collapsed message still has a heading to navigate to. */}
         {mediaAboveText ? null : (
@@ -1051,7 +1055,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
 }
 
 const ACTIONS_REVEAL_CLASS_NAME =
-  "items-center text-xs tabular-nums opacity-0 transition-opacity duration-200 pointer-coarse:opacity-100 focus-within:opacity-100 group-hover:opacity-100";
+  "items-center text-xs tabular-nums opacity-0 transition-opacity duration-150 pointer-coarse:opacity-100 focus-within:opacity-100 group-hover:opacity-100";
 
 function UserMessageIntentMarker({
   intent,

@@ -81,6 +81,7 @@ export const ComposerPendingApprovalActions = memo(function ComposerPendingAppro
               {...buttonProps}
               size="xs"
               variant={option.decision === "accept" ? "default" : "outline"}
+              data-approval-decision={option.decision}
             >
               {content}
             </Button>
@@ -102,7 +103,12 @@ export const ComposerPendingApprovalActions = memo(function ComposerPendingAppro
               presentation === "inline" ? (
                 <InlineButton tone="muted" aria-label="More approval options" />
               ) : (
-                <Button size="icon-xs" variant="outline" aria-label="More approval options" />
+                <Button
+                  size="icon-xs"
+                  variant="outline"
+                  data-approval-more
+                  aria-label="More approval options"
+                />
               )
             }
           >

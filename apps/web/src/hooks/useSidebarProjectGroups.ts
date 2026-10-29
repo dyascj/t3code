@@ -3,7 +3,10 @@ import {
   getProjectOrderKey,
   selectProjectGroupingSettings,
 } from "@t3tools/client-runtime/state/project-grouping";
-import { buildSidebarProjectSnapshots } from "../sidebarProjectGrouping";
+import {
+  buildSidebarProjectSnapshots,
+  resolveSidebarProjectScopeKeys,
+} from "../sidebarProjectGrouping";
 import { useEnvironmentIdentities, usePrimaryEnvironmentId } from "../state/environments";
 import { useDelegatedUnderParent, useProjects, useQuietThreadShells } from "../state/entities";
 import { legacyProjectCwdPreferenceKey, useUiStateStore } from "../uiStateStore";
@@ -40,4 +43,14 @@ export function useSidebarProjectGroups() {
     resolveEnvironmentLabel: (environmentId) => labels.get(environmentId) ?? null,
   });
   return sortSidebarV2ProjectGroups(unsortedGroups, threads, sortOrder, delegatedUnderParent);
+}
+
+/** The sidebar's project filter, shared by the thread list, its rail, and the tabs. */
+export function useSidebarProjectScope() {
+  const groups = useSidebarProjectGroups();
+  const persistedKeys = useUiStateStore((store) => store.sidebarProjectScopeKeys);
+  const settings = useClientSettings(selectProjectGroupingSettings);
+  const keys = resolveSidebarProjectScopeKeys({ groups, keys: persistedKeys, settings });
+  const scopedGroups = groups.filter((group) => keys.includes(group.projectKey));
+  return { groups, scopedGroups };
 }

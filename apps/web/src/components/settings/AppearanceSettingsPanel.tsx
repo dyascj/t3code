@@ -24,6 +24,11 @@ import { useTheme } from "../../hooks/useTheme";
 import { useScopedSettings, useUpdateScopedSettings } from "./useScopedSettings";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
+import {
+  ChatBackgroundSettingsSection,
+  ColorSettingsSection,
+  TranslucencySettingsSection,
+} from "./GlassSettings";
 import { ThemeLibrary } from "./ThemeSettings";
 import {
   SettingResetButton,
@@ -479,6 +484,12 @@ export function AppearanceSettingsPanel() {
           />
         </AdvancedSettings>
       </SettingsSection>
+
+      <ColorSettingsSection />
+
+      <TranslucencySettingsSection />
+
+      <ChatBackgroundSettingsSection />
 
       <TypographySection />
     </SettingsPageContainer>

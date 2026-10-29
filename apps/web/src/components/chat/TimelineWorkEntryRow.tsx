@@ -127,7 +127,7 @@ export function ReasoningTraceContent({ entries }: { entries: ReadonlyArray<Time
       {entries.map((entry) => (
         <ChatMarkdown
           key={entry.id}
-          className="text-foreground"
+          className="transcript-reasoning"
           text={entry.detail ?? ""}
           cwd={ctx.markdownCwd}
           threadRef={ctx.threadRef ?? undefined}
@@ -438,11 +438,12 @@ function WorkEntryLogRow(props: WorkEntryRowProps) {
           className={iconWrapperClass}
           role={showFailedIndicator ? "img" : undefined}
           aria-label={showFailedIndicator ? "Tool call failed" : undefined}
+          data-activity-icon=""
         >
           <ToolActivityIconView
             icon={entryToolIcon}
             fallbackName={entryIconName}
-            className="block size-4 shrink-0 stroke-2"
+            className="block size-3.5 shrink-0"
             muted
           />
         </span>

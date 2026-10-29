@@ -17,7 +17,10 @@ import {
   threadUndoClaimsShortcut,
   undoLatestThreadAction,
 } from "../hooks/showThreadUndoNotice";
-import { getLocalStorageItem, removeLocalStorageItem } from "../hooks/useLocalStorage";
+import {
+  getLocalStorageItem,
+  removeLocalStorageItem,
+} from "../hooks/useLocalStorage";
 import {
   isRichTextBoldShortcut,
   resolveShortcutCommand,
@@ -31,6 +34,7 @@ import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { cn, isMacPlatform } from "../lib/utils";
 import { primaryServerKeybindingsAtom } from "../state/server";
+import { useBackgroundFlipShortcut } from "../glass/useBackgroundFlipShortcut";
 import { useEnvironmentIdentificationMode } from "../hooks/useSettings";
 import {
   PanelAnimationSuppressionProvider,
@@ -42,6 +46,8 @@ import { HistorySwipeNavigation } from "./HistorySwipeNavigation";
 import ThreadSidebar from "./Sidebar";
 import { SidebarBrandWidthProbe } from "./sidebar/SidebarChrome";
 import { isAppModalPage } from "./sidebar/mainAppLocation";
+import { HistoryNavButtons } from "./sidebar/HistoryNavButtons";
+import { SidebarPeek } from "./sidebar/SidebarPeek";
 import type { SidebarRouteReveal } from "./sidebar/routeReveal";
 import { useSidebarStageBackdropVariant } from "./SidebarStageBackdrop";
 import {
@@ -312,6 +318,12 @@ function registerAppShellCommands(router: AnyRouter, shellElement: Element): () 
   };
 }
 
+/** Collapsed on desktop the sidebar is off screen, so its content unmounts until it opens. */
+function ExpandedSidebarContent({ children }: { children: ReactNode }) {
+  const { isMobile, state } = useSidebar();
+  return !isMobile && state === "collapsed" ? null : children;
+}
+
 function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
   const router = useRouter();
   const usagePageOpen = useLocation({ select: (location) => location.pathname === "/usage" });
@@ -373,6 +385,32 @@ function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
       node === null ? undefined : registerAppShellCommands(router, node),
   );
 
+  // On desktop the toggle lives in the sidebar header when open. Collapsed, the
+  // title bar carries the toggle, back, and forward here, in the same spot. The
+  // element stays mounted either way so the shell's commands stay registered.
+  if (!isMobile) {
+    return (
+      <div
+        ref={appShellCommandsRef}
+        className={cn(
+          "fixed left-[var(--workspace-controls-left)] top-[var(--workspace-controls-top)] z-50 ml-px flex h-[var(--workspace-topbar-height)] items-center gap-0.5",
+          isSidebarVisible && "hidden",
+        )}
+        data-sidebar-control=""
+      >
+        <Tooltip>
+          <TooltipTrigger
+            render={<SidebarTrigger aria-label="Expand sidebar" data-sidebar-peek-trigger="" />}
+          />
+          <TooltipPopup side="bottom">
+            Expand sidebar{shortcutLabel ? ` (${shortcutLabel})` : ""}
+          </TooltipPopup>
+        </Tooltip>
+        <HistoryNavButtons />
+      </div>
+    );
+  }
+
   return (
     <div
       ref={appShellCommandsRef}
@@ -417,6 +455,7 @@ export function AppSidebarLayout({
     observedKey: null,
     pendingKey: null,
   }));
+  useBackgroundFlipShortcut();
   const { active: panelAnimationsActive, durationMs: panelAnimationDurationMs } =
     usePanelAnimationSettings();
   const pathname = useLocation({ select: (location) => location.pathname });
@@ -452,6 +491,9 @@ export function AppSidebarLayout({
     ...windowControlsInsetStyle,
   } as CSSProperties;
 
+  // Collapsed, the sidebar unmounts it, so the peek is this content's one instance.
+  const expandedSidebar = <ThreadSidebar routeReveal={sidebarRouteReveal} />;
+
   return (
     <PanelAnimationSuppressionProvider value={panelAnimationsSuppressed}>
       <SidebarProvider
@@ -481,9 +523,10 @@ export function AppSidebarLayout({
               }}
               style={windowControlsInsetStyle}
             >
-              <ThreadSidebar routeReveal={sidebarRouteReveal} />
+              <ExpandedSidebarContent>{expandedSidebar}</ExpandedSidebarContent>
               <SidebarRail onDoubleClick={resetSidebarWidth} />
             </Sidebar>
+            <SidebarPeek>{expandedSidebar}</SidebarPeek>
           </>
         ) : null}
         {children}

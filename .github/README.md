@@ -1,0 +1,52 @@
+# T3 Code Glass
+
+<p align="center">
+  <img width="1000" alt="T3 Code Glass: the window glass, title bar tabs, and the animated ASCII ocean behind a new chat" src="assets/hero.png" />
+</p>
+
+A fork of [T3 Code](https://github.com/pingdotgg/t3code) that follows its stable releases and adds:
+
+- **Window glass.** On macOS in dark mode the window is translucent and blurs the desktop behind it.
+- **Appearance controls.** Tint color, sidebar translucency, and blur strength in Settings > Appearance.
+- **Chat backgrounds.** An image behind your chats, globally or per project, with effects: Dither, ASCII, Halftone, Scanlines, and Haze (blurred and dithered by default). The default background, before the image ones, is an animated ASCII ocean: sharks hunting schools of fish on the glass, after the ASCII Ocean Framer component, light and dark.
+- **Home.** Opening the app lands in a new No project chat: just the composer, nothing else. Narrower than MonoCode's breakpoint (a 56rem chat area), the composer docks at the bottom, and the window goes down to 400px wide.
+- **Skills.** Settings > Skills lists every skill your providers report, across every environment, with its scope, provider, and path.
+- **Neutral glass and calm motion.** The composer, menus, pickers, command bar, and dialogs share one neutral glass with hairline borders, and surfaces ease in with a short scale and drift.
+- **Title bar tabs.** The title bar is a strip of thread tabs, after MonoCode's: drag to reorder, close to settle (tabs fold away, new ones grow in), live status on each, and the thread's details on hover. A + after the last tab starts a new thread. Thread details, the terminal, and the right panel sit in a small floating pill under it.
+- **New layout.** After MonoCode's: the sidebar and the title bar sit on the glass without hairlines, and the workspace below the tabs floats in a rounded card. On by default; switch it off in Settings > Appearance.
+- **A slimmer glass sidebar.** Open threads live in the tabs, so the sidebar keeps only T3 Code's Snoozed and Settled shelves, at a narrower default width, sitting on the glass. Above them: Search, Filter by project (it filters the tabs too), New thread, Add project, then Pull Requests, Usage, Scheduled tasks, and Providers. Collapse it (drag it shut or press `Mod+\`) and it goes away entirely. The collapse and expand button always sits at the top, left of back and forward. Collapsed, the full sidebar peeks out over the workspace when you rest the pointer on the expand button, after MonoCode's, and tucks away when you leave it. Backgrounds take an effect (Dither, ASCII, Halftone, Scanlines, or none) and, over any of them, Haze, which fades out, blurs, or fades to a blur toward the bottom. `Mod+B` flips between chat backgrounds, the ASCII ocean first; + adds as many as you like, each with its own image and focal point, placed in a full-size view in Settings. New thread always offers No project first. Backgrounds stay inside the content area, and text on them adapts to the art behind it.
+
+Everything else is stock T3 Code. Backgrounds and appearance settings stay on your device.
+
+## Where things live
+
+- Code: the `glass` branch of [dyascj/t3code](https://github.com/dyascj/t3code/tree/glass). Its commits sit on top of the latest stable T3 Code tag, so `git log <tag>..glass` lists every change the fork makes.
+- Build and update script: [`scripts/glass-update.sh`](../scripts/glass-update.sh). On CJ's Mac it is also on PATH as `t3-glass-update` (a symlink in `~/.local/bin`).
+- T3 Code's own readme is still at [`README.md`](../README.md). This file lives in `.github/` so GitHub shows it on the repo page without touching upstream files, which keeps updates conflict-free.
+
+## Build it
+
+Requires macOS on Apple Silicon, Node 24, pnpm, and Rust ([rustup.rs](https://rustup.rs)).
+
+```bash
+git clone -b glass https://github.com/dyascj/t3code.git t3code-glass
+cd t3code-glass
+scripts/glass-update.sh
+```
+
+The script moves the fork onto the newest stable T3 Code release, builds the app, backs up your current `/Applications/T3 Code (Beta).app` and its database to `~/.t3-glass-backups`, and installs the new build. Run it again whenever T3 Code ships a stable release. `--build-only` stops after building; `--install` installs the last build.
+
+If a new release conflicts with the fork, the script stops before building and leaves your installed app alone.
+
+Local builds are signed ad hoc and never auto-update. macOS may ask once per build for access to the "T3 Code (Beta) Safe Storage" keychain item; choose Always Allow.
+
+## Maintaining the fork
+
+- `glass` is the only branch and the default. The other branches GitHub copied from T3 Code at fork time were deleted on purpose; T3 Code releases come from the `upstream` remote, not from branches here.
+- **Never click GitHub's "Sync fork" button.** It merges T3 Code's `main`, which is nightly code, into `glass`. Update with `scripts/glass-update.sh` instead, which moves to stable tags only.
+- New fork features go on `glass` as their own commits, so `git log <tag>..glass` stays a readable list of everything the fork changes.
+- If the script reports a conflict: run `git rebase --onto <new tag> <old tag> glass`, fix the conflicts in the fork's commits, `git push --force-with-lease origin glass`, then run the script again.
+
+## Notices
+
+The background effects include third-party code under the MIT license; see [`apps/web/src/glass/THIRD_PARTY_LICENSE`](../apps/web/src/glass/THIRD_PARTY_LICENSE).

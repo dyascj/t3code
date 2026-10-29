@@ -163,8 +163,7 @@ export function renderGhosttySnapshot(options: {
   if (forceFull) {
     context.save();
     context.resetTransform();
-    context.fillStyle = cssColor(snapshot.background);
-    context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     context.restore();
   }
 
@@ -174,8 +173,8 @@ export function renderGhosttySnapshot(options: {
     if (!row) continue;
     const top = originY + rowIndex * metrics.height;
 
-    context.fillStyle = cssColor(snapshot.background);
-    context.fillRect(padding, top, snapshot.cols * metrics.width, metrics.height);
+    // Default-background cells stay clear; the mount paints that color.
+    context.clearRect(padding, top, snapshot.cols * metrics.width, metrics.height);
 
     let backgroundStart = 0;
     while (backgroundStart < row.cells.length) {

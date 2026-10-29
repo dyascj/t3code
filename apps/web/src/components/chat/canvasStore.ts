@@ -5,6 +5,9 @@ import type { DetailsCardMeasurement } from "./ChatCanvasContext";
 import { resolveChatCanvasLayout, type ChatCanvasPreview } from "./chatCanvasLayout";
 import { resolveThreadDetailsCardLayout } from "./threadDetailsCardLayout";
 
+/** The floating chat controls: 12px inset plus their 32px height. */
+const CHAT_CONTROLS_RESERVED_HEIGHT = 44;
+
 interface CanvasEdges {
   readonly left: number;
   readonly right: number;
@@ -95,7 +98,8 @@ export function resolveChatCanvasModel({
 }) {
   const container = { width: measurements.width, height: measurements.height };
   const { findBar } = measurements;
-  const detailsCardTopInset = findBar?.bottom ?? 0;
+  // The chat's floating controls hold the top right; cards start below them.
+  const detailsCardTopInset = findBar?.bottom ?? CHAT_CONTROLS_RESERVED_HEIGHT;
   const lane = { padding: measurements.padding, minChatWidth: measurements.minChatWidth };
   // The preview avoids where an open inline card would sit, whether or not a
   // preview overlap has pushed the card itself into popover mode.

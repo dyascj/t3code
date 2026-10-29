@@ -529,7 +529,7 @@ interface MergedEnvironmentQueryView<A> {
 }
 
 // Use one derived atom for variable fan-out; unreachable environments must not hide other rows.
-function createMergedEnvironmentQuery<Input, A>(
+export function createMergedEnvironmentQuery<Input, A>(
   label: string,
   atomFor: (
     target: EnvironmentQueryTarget<Input>,

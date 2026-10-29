@@ -65,6 +65,7 @@ import {
   FolderGit2Icon,
   FolderIcon,
   FolderPlusIcon,
+  HouseIcon,
   MessageSquareDashedIcon,
   LinkIcon,
   MessageSquareIcon,
@@ -190,7 +191,6 @@ import {
   buildLinkedThreadActionItems,
   buildCommandPaletteRows,
   enumerateCommandPaletteItems,
-  newThreadNoProjectIndex,
   findHighlightedCommandPaletteItem,
   type CommandPaletteActionItem,
   type CommandPaletteOpenIntent,
@@ -861,18 +861,9 @@ function OpenCommandPaletteDialog(props: {
       });
       if (scratchTargetEnvironmentId === null) return projectItems;
 
-      const noProjectIndex = newThreadNoProjectIndex(
-        projectPickerEntries.map(({ group, targetProject, isPreferred }) => ({
-          isScratch: isScratchProject(
-            targetProject,
-            scratchWorkspaceRootFor(targetProject.environmentId),
-          ),
-          pinned: group.pinned,
-          isPreferred,
-        })),
-      );
+      // Glass: "No project" always leads, then the projects (pinned first). It
+      // keeps its own shortcut, so the projects' mod+1..9 hold.
       return [
-        ...projectItems.slice(0, noProjectIndex),
         {
           kind: "action" as const,
           value: NEW_THREAD_NO_PROJECT_VALUE,
@@ -882,7 +873,7 @@ function OpenCommandPaletteDialog(props: {
           shortcutCommand: "chat.newWithoutProject" as const,
           run: () => startScratchThread(scratchTargetEnvironmentId),
         },
-        ...projectItems.slice(noProjectIndex),
+        ...projectItems,
       ];
     })(),
     rowOrderKey("new-thread-in"),
@@ -1632,6 +1623,17 @@ function OpenCommandPaletteDialog(props: {
             ? paletteRouteTarget.threadRef.environmentId
             : null),
       );
+    },
+  });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:home",
+    searchTerms: ["home", "dashboard", "overview", "github", "contributions", "streak"],
+    title: "Go home",
+    icon: <HouseIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/" });
     },
   });
 

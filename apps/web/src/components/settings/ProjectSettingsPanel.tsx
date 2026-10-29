@@ -49,6 +49,7 @@ import {
   ProjectFaviconPickerDialog,
 } from "./ProjectFaviconPickerDialog";
 import { ProjectActionsSettings } from "./ProjectActionsSettings";
+import { ProjectChatBackgroundSection } from "./ProjectChatBackgroundSection";
 import { ProjectDefaultsSettings } from "./ProjectDefaultsSettings";
 import {
   defaultProjectIcon,
@@ -653,6 +654,10 @@ function ProjectDetail({
             </>
           ) : null}
         </SettingsSection>
+        <ProjectChatBackgroundSection
+          projectKey={group.projectKey}
+          projectName={group.displayName}
+        />
         <ProjectDefaultsSettings category="project" />
         <ProjectActionsSettings />
         {checkoutChoices}

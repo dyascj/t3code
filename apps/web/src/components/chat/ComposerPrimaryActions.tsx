@@ -6,6 +6,7 @@ import {
   PlayIcon,
   CornerUpRightIcon,
   ListPlusIcon,
+  ArrowUpIcon,
 } from "lucide-react";
 import { useEnvironmentIdentificationMode } from "~/hooks/useSettings";
 import { formatContextWindowTokens } from "~/lib/contextWindow";
@@ -77,7 +78,7 @@ const formatPendingPrimaryActionLabel = (input: {
 };
 
 const messageActionPillClassName =
-  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-message-action font-medium text-base text-message-action-foreground shadow-xs shadow-message-action/24 outline-none hover:bg-message-action-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-64 disabled:shadow-none sm:text-sm";
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-message-action font-medium text-message-action-foreground text-xs outline-none transition-colors duration-150 ease-out hover:bg-message-action-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40";
 
 const preventPointerFocus: PointerEventHandler<HTMLElement> = (event) => {
   event.preventDefault();
@@ -134,8 +135,8 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
           <button
             type="button"
             className={cn(
-              "flex shrink-0 cursor-pointer items-center justify-center rounded-full bg-destructive/90 text-white shadow-xs shadow-destructive/24 inset-shadow-control-highlight transition-colors duration-150 hover:bg-destructive active:inset-shadow-control-pressed active:shadow-none [&_svg]:pointer-events-none",
-              insidePendingAction ? "size-8 sm:size-7" : "size-8 sm:h-8 sm:w-8",
+              "flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md bg-message-action text-message-action-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-message-action-hover active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 sm:size-6.5 [&_svg]:pointer-events-none",
+              insidePendingAction && "size-6.5",
             )}
             {...pointerFocusProps}
             disabled={!canOperateThread}
@@ -146,8 +147,8 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
           />
         }
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
-          <rect x="2" y="2" width="8" height="8" rx="1.5" />
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+          <rect x="1" y="1" width="8" height="8" rx="1" />
         </svg>
       </TooltipTrigger>
       <TooltipPopup>Interrupt</TooltipPopup>
@@ -185,7 +186,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
         {children}
         <button
           type="submit"
-          className={cn(messageActionPillClassName, "h-8 sm:h-7", compact ? "px-3" : "px-4")}
+          className={cn(messageActionPillClassName, "h-7 sm:h-6.5", compact ? "px-2.5" : "px-3")}
           {...pointerFocusProps}
           disabled={
             !canOperateThread ||
@@ -259,7 +260,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
     <button
       type={showResume ? "button" : "submit"}
       className={cn(
-        "relative isolate flex h-9 w-9 items-center justify-center overflow-hidden rounded-full shadow-xs transition-all duration-150 enabled:cursor-pointer enabled:inset-shadow-control-highlight hover:scale-105 active:inset-shadow-control-pressed active:shadow-none disabled:pointer-events-none disabled:shadow-none disabled:hover:scale-100 sm:h-8 sm:w-8 [&_svg]:pointer-events-none",
+        "relative isolate flex size-7 items-center justify-center overflow-hidden rounded-md transition-[background-color,transform] duration-150 ease-out enabled:cursor-pointer active:scale-[0.97] disabled:pointer-events-none sm:size-6.5 [&_svg]:pointer-events-none",
         stageBackdropVariant
           ? "bg-transparent text-white enabled:shadow-black/24 enabled:hover:brightness-110 disabled:opacity-64"
           : "bg-message-action text-message-action-foreground enabled:shadow-message-action/24 hover:bg-message-action-hover disabled:bg-foreground/12 disabled:text-muted-foreground",
@@ -282,23 +283,15 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
       {isSendBusy ? (
         <Spinner size="sm" aria-hidden="true" />
       ) : showResume ? (
-        <PlayIcon className="size-4 fill-current" aria-hidden="true" />
+        <PlayIcon className="size-3.5 fill-current" aria-hidden="true" />
       ) : isEditingQueuedMessage ? (
-        <CheckIcon className="size-4" aria-hidden="true" />
+        <CheckIcon className="size-3.5" aria-hidden="true" />
       ) : isRunning && isQueuing ? (
-        <ListPlusIcon className="size-4" aria-hidden="true" />
+        <ListPlusIcon className="size-3.5" aria-hidden="true" />
       ) : isRunning ? (
-        <CornerUpRightIcon className="size-4" aria-hidden="true" />
+        <CornerUpRightIcon className="size-3.5" aria-hidden="true" />
       ) : (
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <path
-            d="M7 11.5V2.5M7 2.5L3 6.5M7 2.5L11 6.5"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <ArrowUpIcon className="size-3.5" strokeWidth={2.25} aria-hidden="true" />
       )}
     </button>
   );
@@ -325,7 +318,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
           render={
             <button
               type="button"
-              className="flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-(--control-radius) px-2 font-medium text-base text-foreground/80 tabular-nums outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-64 sm:text-sm aria-pressed:bg-accent/60 aria-pressed:text-foreground [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:text-muted-foreground"
+              className="flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 font-medium text-foreground/80 text-xs tabular-nums outline-none transition-colors duration-150 ease-out hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 sm:h-6.5 aria-pressed:bg-accent/60 aria-pressed:text-foreground [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:text-muted-foreground"
               {...pointerFocusProps}
               aria-pressed={!keepFullHistory}
               aria-label={`Compact ${compactTokens} tokens of history before sending`}
