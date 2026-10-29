@@ -7,6 +7,7 @@ import ChatMarkdown from "../ChatMarkdown";
 import { GitForkIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { ProposedPlanCard } from "./ProposedPlanCard";
+import { PLAN_STEPS_MS, useOneShotEntrance } from "./timelineEntrances";
 import { HtmlRenderFrame } from "./HtmlRenderFrame";
 import { McpAppFrame } from "./McpAppFrame";
 import { ChangedFilesCard } from "./ChangedFilesTree";
@@ -223,10 +224,16 @@ export function ProposedPlanTimelineRow({
   row: Extract<TimelineRow, { kind: "proposed-plan" }>;
 }) {
   const ctx = use(TimelineRowCtx);
+  const celebrate = useOneShotEntrance(
+    row.proposedPlan.id,
+    row.proposedPlan.createdAt,
+    PLAN_STEPS_MS,
+  );
 
   return (
     <div className="min-w-0 px-1 py-0.5">
       <ProposedPlanCard
+        celebrate={celebrate}
         planMarkdown={row.proposedPlan.planMarkdown}
         environmentId={ctx.activeThreadEnvironmentId}
         threadRef={ctx.threadRef ?? undefined}

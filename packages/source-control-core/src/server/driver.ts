@@ -63,6 +63,12 @@ export interface SourceControlDriverInstance {
     Scope.Scope
   >;
   readonly signIn?: SourceControlSignIn;
+  /** A GET against the host's REST API with the server's credential; resolves to the body. */
+  readonly restGet?: (input: {
+    readonly host: string;
+    readonly operation: string;
+    readonly path: string;
+  }) => Effect.Effect<string, Error>;
 }
 
 /** What the server gives every driver. A driver builds anything else it needs itself. */

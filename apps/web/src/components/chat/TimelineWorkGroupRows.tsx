@@ -11,7 +11,7 @@ import { memo, use, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { workEntryDisplayIndicatesToolFailure } from "../../session-logic";
 import ChatMarkdown from "../ChatMarkdown";
-import { Minimize2Icon, XIcon } from "lucide-react";
+import { ChevronRightIcon, Minimize2Icon, XIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { getVirtualizedScrollFadeClassName } from "../ui/scroll-area";
 import {
@@ -291,7 +291,7 @@ export function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: 
     "Working..."
   );
   return (
-    <div className="border-b border-border/60 pb-2 pt-1">
+    <div className="pb-2 pt-1">
       <div className="flex h-6 min-w-0 items-baseline gap-2 px-1 text-sm leading-relaxed text-muted-foreground tabular-nums">
         <span
           ref={shimmer ? observeVisibleAnimation : undefined}
@@ -397,24 +397,35 @@ function LiveActivityRow({
 }) {
   const animated = active && !failed;
   const showShimmer = animated && shimmer;
+  // Work ticker: once a live row's label changes, the new label slides up
+  // into place. The first label never moves.
+  const [initialLabel] = useState(label);
+  const tickKey = animated && typeof label === "string" && label !== initialLabel ? label : null;
   return (
     <div
       ref={animated ? observeVisibleAnimation : undefined}
       className="relative min-h-6 w-fit max-w-full min-w-0 overflow-hidden rounded-md text-sm leading-relaxed"
     >
-      <LiveActivityContent
-        label={label}
-        iconName={iconName}
-        toolIcon={toolIcon}
-        failed={failed}
-        announceFailure={failed}
-        active={animated && !shimmer}
-      />
-      {showShimmer ? (
-        <ActivityShimmerOverlay>
-          <LiveActivityContent label={label} iconName={iconName} toolIcon={toolIcon} highlighted />
-        </ActivityShimmerOverlay>
-      ) : null}
+      <div key={tickKey} className={tickKey === null ? undefined : "transcript-work-tick"}>
+        <LiveActivityContent
+          label={label}
+          iconName={iconName}
+          toolIcon={toolIcon}
+          failed={failed}
+          announceFailure={failed}
+          active={animated && !shimmer}
+        />
+        {showShimmer ? (
+          <ActivityShimmerOverlay>
+            <LiveActivityContent
+              label={label}
+              iconName={iconName}
+              toolIcon={toolIcon}
+              highlighted
+            />
+          </ActivityShimmerOverlay>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -454,11 +465,12 @@ function LiveActivityContent({
             )}
             role={announceFailure ? "img" : undefined}
             aria-label={announceFailure ? "Tool call failed" : undefined}
+            data-activity-icon=""
           >
             <ToolActivityIconView
               icon={toolIcon}
               fallbackName={iconName}
-              className="block size-4 shrink-0 stroke-2"
+              className="block size-3.5 shrink-0"
               muted={!highlighted}
             />
           </span>
@@ -521,11 +533,14 @@ export function LiveWorkEntryTimelineRow({
       {thoughtLine ? (
         <WorkLogRow
           icon={
-            <span className="flex size-4 items-center justify-center text-icon-muted">
+            <span
+              className="flex size-4 items-center justify-center text-icon-muted"
+              data-activity-icon=""
+            >
               <ToolActivityIconView
                 icon={undefined}
                 fallbackName="brain"
-                className="block size-4 shrink-0 stroke-2"
+                className="block size-3.5 shrink-0"
                 muted
               />
             </span>
@@ -615,12 +630,18 @@ function WorkGroupHeader(props: {
       aria-expanded={props.expanded}
       onClick={props.onToggle}
       icon={
-        <ToolActivityIconView
-          icon={props.toolIcon}
-          fallbackName={props.iconName}
-          className="size-4 shrink-0 stroke-2 text-icon-muted"
-          muted
-        />
+        <span
+          className="relative flex size-4 items-center justify-center text-icon-muted"
+          data-activity-icon=""
+        >
+          <ToolActivityIconView
+            icon={props.toolIcon}
+            fallbackName={props.iconName}
+            className="size-3.5 shrink-0"
+            muted
+          />
+          <ChevronRightIcon aria-hidden className="absolute size-3.5" data-work-group-chevron="" />
+        </span>
       }
       label={<span className="block truncate">{props.label}</span>}
       trailing={

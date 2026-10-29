@@ -469,7 +469,7 @@ function QueuedMessage(props: {
                 {props.thumbnails.map((thumbnail) => (
                   <span
                     key={thumbnail.key}
-                    className="size-8 overflow-hidden rounded-md border border-border/70 bg-background"
+                    className="size-8 overflow-hidden rounded-md border border-foreground/10 bg-foreground/5"
                   >
                     {thumbnail.url ? (
                       <img
@@ -478,7 +478,10 @@ function QueuedMessage(props: {
                         className="size-full object-cover"
                       />
                     ) : (
-                      <span aria-label={thumbnail.name} className="block size-full bg-muted/60" />
+                      <span
+                        aria-label={thumbnail.name}
+                        className="block size-full bg-foreground/10"
+                      />
                     )}
                   </span>
                 ))}

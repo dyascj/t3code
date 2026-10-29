@@ -145,7 +145,10 @@ type WhenToken =
   | { type: "rparen" };
 
 export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
-  { key: "mod+b", command: "sidebar.toggle" },
+  // Mod+B flips the chat backgrounds; the sidebar moved to Mod+\ because
+  // Mod+Shift+B toggles the thread details panel.
+  { key: "mod+b", command: "background.flip" },
+  { key: "mod+\\", command: "sidebar.toggle" },
   { key: "f6", command: "workspace.focusNext" },
   { key: "shift+f6", command: "workspace.focusPrevious" },
   // Some browsers keep plain F6 for their own toolbars; mod+F6 reaches the page in all of them.

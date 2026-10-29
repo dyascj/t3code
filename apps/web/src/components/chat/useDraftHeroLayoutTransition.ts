@@ -63,7 +63,8 @@ export function useDraftHeroLayoutTransition(
       }
     }
     previousStateRef.current = isDraftHeroState;
-    previousComposerRectRef.current = nextComposerRect;
+    // Only a send captures the launch rect, so thread switches do not glide.
+    previousComposerRectRef.current = null;
   }, [animationDurationMs, animationsActive, isDraftHeroState]);
 
   return { transitionGroupRef, composerAnchorRef, captureComposerRect } as const;

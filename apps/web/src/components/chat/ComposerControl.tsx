@@ -13,7 +13,7 @@ function composerControlClassName(size: ComposerControlSize, className?: string)
     "[&_:is([data-composer-control-label],[data-chat-provider-model-picker-label])]:[text-box:trim-both_cap_alphabetic] supports-[text-box:trim-both_cap_alphabetic]:[&_:is([data-composer-control-label],[data-chat-provider-model-picker-label])]:py-1.5",
     size === "xs"
       ? "h-7 gap-1 px-1.75 font-normal text-foreground/70 text-sm hover:text-foreground dark:text-muted-foreground sm:h-6 sm:text-xs [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3.5 [&_svg[data-composer-control-chevron]]:ms-0 [&_svg[data-composer-control-chevron]]:-me-1"
-      : "h-7 gap-1.5 px-2 font-medium text-foreground/80 [&_svg:not([class*='text-'])]:text-muted-foreground hover:text-foreground sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4",
+      : "h-7 gap-1 rounded-md bg-foreground/10 px-1.5 font-normal text-foreground text-xs hover:bg-foreground/15 data-pressed:bg-foreground/15 data-popup-open:bg-foreground/15 light:bg-foreground/6 light:hover:bg-foreground/10 light:data-pressed:bg-foreground/10 light:data-popup-open:bg-foreground/10 sm:h-6.5 sm:text-2xs [&_svg:not([class*='size-'])]:size-4 sm:[&_svg:not([class*='size-'])]:size-3.5",
     "aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:hover:bg-accent/80",
     className,
   );
@@ -56,7 +56,7 @@ export function ComposerControlIcon({
       aria-hidden="true"
       className={cn(
         "shrink-0",
-        size === "xs" ? "size-3" : opticalSize === "large" ? "size-4.5" : "size-4",
+        size === "xs" ? "size-3" : opticalSize === "large" ? "size-4" : "size-3.5",
         className,
       )}
       data-composer-control-icon

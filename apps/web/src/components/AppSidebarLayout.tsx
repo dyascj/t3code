@@ -17,7 +17,11 @@ import {
   threadUndoClaimsShortcut,
   undoLatestThreadAction,
 } from "../hooks/showThreadUndoNotice";
-import { getLocalStorageItem, removeLocalStorageItem } from "../hooks/useLocalStorage";
+import {
+  getLocalStorageItem,
+  removeLocalStorageItem,
+  setLocalStorageItem,
+} from "../hooks/useLocalStorage";
 import {
   isRichTextBoldShortcut,
   resolveShortcutCommand,
@@ -31,6 +35,7 @@ import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { cn, isMacPlatform } from "../lib/utils";
 import { primaryServerKeybindingsAtom } from "../state/server";
+import { useBackgroundFlipShortcut } from "../glass/useBackgroundFlipShortcut";
 import { useEnvironmentIdentificationMode } from "../hooks/useSettings";
 import {
   PanelAnimationSuppressionProvider,
@@ -41,6 +46,8 @@ import { BackgroundThreadAnnouncer } from "./BackgroundThreadAnnouncer";
 import ThreadSidebar from "./Sidebar";
 import { SidebarBrandWidthProbe } from "./sidebar/SidebarChrome";
 import { isAppModalPage } from "./sidebar/mainAppLocation";
+import { HistoryNavButtons } from "./sidebar/HistoryNavButtons";
+import { SidebarPeek } from "./sidebar/SidebarPeek";
 import type { SidebarRouteReveal } from "./sidebar/routeReveal";
 import { useSidebarStageBackdropVariant } from "./SidebarStageBackdrop";
 import {
@@ -311,6 +318,12 @@ function registerAppShellCommands(router: AnyRouter, shellElement: Element): () 
   };
 }
 
+/** Collapsed on desktop the sidebar is off screen, so its content unmounts until it opens. */
+function ExpandedSidebarContent({ children }: { children: ReactNode }) {
+  const { isMobile, state } = useSidebar();
+  return !isMobile && state === "collapsed" ? null : children;
+}
+
 function SidebarControl() {
   const router = useRouter();
   const usagePageOpen = useLocation({ select: (location) => location.pathname === "/usage" });
@@ -370,6 +383,32 @@ function SidebarControl() {
       node === null ? undefined : registerAppShellCommands(router, node),
   );
 
+  // On desktop the toggle lives in the sidebar header when open. Collapsed, the
+  // title bar carries the toggle, back, and forward here, in the same spot. The
+  // element stays mounted either way so the shell's commands stay registered.
+  if (!isMobile) {
+    return (
+      <div
+        ref={appShellCommandsRef}
+        className={cn(
+          "fixed left-[var(--workspace-controls-left)] top-[var(--workspace-controls-top)] z-50 ml-px flex h-[var(--workspace-topbar-height)] items-center gap-0.5",
+          isSidebarVisible && "hidden",
+        )}
+        data-sidebar-control=""
+      >
+        <Tooltip>
+          <TooltipTrigger
+            render={<SidebarTrigger aria-label="Expand sidebar" data-sidebar-peek-trigger="" />}
+          />
+          <TooltipPopup side="bottom">
+            Expand sidebar{shortcutLabel ? ` (${shortcutLabel})` : ""}
+          </TooltipPopup>
+        </Tooltip>
+        <HistoryNavButtons />
+      </div>
+    );
+  }
+
   return (
     <div
       ref={appShellCommandsRef}
@@ -400,12 +439,34 @@ function SidebarControl() {
   );
 }
 
+// The sidebar starts open and remembers per device whether it was last collapsed.
+const SIDEBAR_OPEN_STORAGE_KEY = "t3code:sidebar-open:v2";
+
+function readInitialSidebarOpen(): boolean {
+  try {
+    return getLocalStorageItem(SIDEBAR_OPEN_STORAGE_KEY, Schema.Boolean) ?? true;
+  } catch {
+    return true;
+  }
+}
+
+function SidebarOpenPersistence() {
+  const { open } = useSidebar();
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- mirrors the provider's open state to local storage
+  useEffect(() => {
+    setLocalStorageItem(SIDEBAR_OPEN_STORAGE_KEY, open, Schema.Boolean);
+  }, [open]);
+  return null;
+}
+
 export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const sidebarArea = workspaceAreaProps("sidebar", 0, "Threads");
   const [sidebarRouteReveal] = useState<SidebarRouteReveal>(() => ({
     observedKey: null,
     pendingKey: null,
   }));
+  useBackgroundFlipShortcut();
+  const [initialSidebarOpen] = useState(readInitialSidebarOpen);
   const { active: panelAnimationsActive, durationMs: panelAnimationDurationMs } =
     usePanelAnimationSettings();
   const pathname = useLocation({ select: (location) => location.pathname });
@@ -441,15 +502,19 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
     ...windowControlsInsetStyle,
   } as CSSProperties;
 
+  // Collapsed, the sidebar unmounts it, so the peek is this content's one instance.
+  const expandedSidebar = <ThreadSidebar routeReveal={sidebarRouteReveal} />;
+
   return (
     <PanelAnimationSuppressionProvider value={panelAnimationsSuppressed}>
       <SidebarProvider
         className="h-dvh! min-h-0!"
         data-panel-animations={routePanelAnimationsActive ? "true" : "false"}
-        defaultOpen
+        defaultOpen={initialSidebarOpen}
         style={sidebarProviderStyle}
       >
         <SidebarBrandWidthProbe onWidthChange={setBrandWidth} />
+        <SidebarOpenPersistence />
         <Sidebar
           side="left"
           collapsible="offcanvas"
@@ -468,9 +533,10 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
           }}
           style={windowControlsInsetStyle}
         >
-          <ThreadSidebar routeReveal={sidebarRouteReveal} />
+          <ExpandedSidebarContent>{expandedSidebar}</ExpandedSidebarContent>
           <SidebarRail onDoubleClick={resetSidebarWidth} />
         </Sidebar>
+        <SidebarPeek>{expandedSidebar}</SidebarPeek>
         {children}
         <BackgroundThreadAnnouncer />
         <SidebarControl />

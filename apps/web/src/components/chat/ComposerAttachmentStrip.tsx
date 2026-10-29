@@ -32,6 +32,7 @@ import { AttachmentImage } from "../media/AttachmentImage";
 import { Button } from "../ui/button";
 import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { ComposerControl } from "./ComposerControl";
 import { ComposerImageThumbnail } from "./ComposerImageThumbnail";
 import { composerFloatingLayerProps } from "./composerEventScope";
 import type { PreparingComposerImage } from "./preparingComposerImages";
@@ -697,10 +698,8 @@ export function ComposerAttachButton({
       <Tooltip>
         <TooltipTrigger
           render={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
+            <ComposerControl
+              className="size-7 px-0 text-muted-foreground hover:text-foreground sm:size-6.5"
               onPointerDown={(event) => event.preventDefault()}
               onClick={() => inputRef.current?.click()}
               aria-label="Attach files"

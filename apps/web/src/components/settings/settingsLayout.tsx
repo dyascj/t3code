@@ -198,6 +198,7 @@ export function PolicyTooltip({ children }: { readonly children: string }) {
 
 export function SettingsSection({
   title,
+  description,
   hideTitle = false,
   icon,
   titleAction,
@@ -208,6 +209,7 @@ export function SettingsSection({
   ...sectionProps
 }: ComponentPropsWithoutRef<"section"> & {
   title: string;
+  description?: ReactNode;
   hideTitle?: boolean;
   icon?: ReactNode;
   titleAction?: ReactNode;
@@ -232,7 +234,7 @@ export function SettingsSection({
           className="flex min-h-7 items-start justify-between gap-4 px-3 sm:px-4"
         >
           <div className="flex min-w-0 items-center gap-1">
-            <h2 className="flex min-h-7 items-center gap-2 text-base font-semibold text-foreground">
+            <h2 className="flex min-h-7 items-center gap-2 text-tab font-semibold text-foreground">
               {icon}
               {title}
             </h2>
@@ -241,6 +243,11 @@ export function SettingsSection({
           <div className="flex min-h-7 min-w-7 items-center justify-end">{headerAction}</div>
         </div>
       )}
+      {description && !hideTitle ? (
+        <p className="-mt-1.5 px-3 text-xs leading-relaxed text-foreground/45 sm:px-4">
+          {description}
+        </p>
+      ) : null}
       <SettingsGroup data-settings-scroll-target={hideTitle ? "" : undefined} variant={variant}>
         {children}
       </SettingsGroup>
@@ -460,14 +467,14 @@ export function SettingsRow({
       data-slot="settings-row"
       className={cn(
         "group/settings-row @container/settings-row rounded-xl px-3 sm:px-4 aria-disabled:opacity-64 aria-disabled:[&_*]:text-muted-foreground",
-        children ? "pt-3 pb-1" : "py-3",
+        children ? "pt-3.5 pb-1" : "py-3.5",
         className,
       )}
     >
       <div className="flex flex-col gap-3 @min-[32rem]/settings-row:grid @min-[32rem]/settings-row:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)] @min-[32rem]/settings-row:items-center @min-[32rem]/settings-row:gap-8">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex min-h-5 items-center gap-1.5">
-            <h3 className="text-sm font-medium text-foreground">{title}</h3>
+            <h3 className="text-tab font-medium text-foreground">{title}</h3>
             {renderedInheritance ? (
               <span
                 className={cn(
@@ -486,7 +493,7 @@ export function SettingsRow({
             </span>
           </div>
           {description ? (
-            <p className="max-w-2xl text-balance text-xs leading-normal text-muted-foreground">
+            <p className="max-w-2xl text-balance text-xs leading-relaxed text-foreground/45">
               {description}
             </p>
           ) : null}

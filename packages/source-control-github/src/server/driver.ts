@@ -59,6 +59,12 @@ const makeInstance = Effect.all({
   pullRequests: GitHubPullRequestProvider.make,
   fetchMedia: GitHubMediaFetch.make,
   signIn: makeSignIn,
+  restGet: Effect.map(
+    GitHubRest.GitHubRest,
+    (api) =>
+      (input: { readonly host: string; readonly operation: string; readonly path: string }) =>
+        api.rest(input).pipe(Effect.map((response) => response.body)),
+  ),
 });
 
 export const driver = defineSourceControlDriver({

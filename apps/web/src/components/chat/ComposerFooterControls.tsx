@@ -61,6 +61,7 @@ export const ComposerFooterModeControls = memo(function ComposerFooterModeContro
           <ComposerControl
             size={size}
             className="shrink-0 whitespace-nowrap"
+            data-composer-plan-toggle
             aria-pressed={props.interactionMode === "plan"}
             type="button"
             onClick={props.onToggleInteractionMode}

@@ -1,0 +1,651 @@
+import {
+  applyPreparedBackground,
+  clearPreparedBackground,
+  prepareBackgroundEffect,
+  type BackgroundEffect,
+} from "./backgroundEffects";
+import { deleteImage, readImage, writeImage } from "./imageStore";
+
+/*
+ * Color, translucency, and chat background settings.
+ * Everything here is device-local: settings live in localStorage and images
+ * live in IndexedDB, so nothing crosses the wire.
+ */
+
+export type { BackgroundEffect };
+export type ChatBackgroundScope = "empty" | "all";
+/** How Haze takes the artwork away toward the bottom. */
+export type HazeStyle = "fade" | "blur" | "fade-blur";
+
+/** A focal point, in percent from the image's left and top edges. */
+export interface BackgroundFocus {
+  readonly x: number;
+  readonly y: number;
+}
+export const DEFAULT_BACKGROUND_FOCUS: BackgroundFocus = { x: 50, y: 50 };
+
+export interface GlassAppearance {
+  readonly hue: number;
+  readonly saturation: number;
+  readonly darkLightness: number;
+  readonly sidebarOpacity: number;
+  readonly blurRadius: number;
+  readonly mainPaneGlass: boolean;
+  /** The new layout: the workspace floats in a rounded card beside the sidebar. */
+  readonly insetLayout: boolean;
+  readonly backgroundEffect: BackgroundEffect;
+  /** Haze works over any effect: it fades or blurs the artwork toward the bottom. */
+  readonly haze: boolean;
+  readonly hazeStyle: HazeStyle;
+  readonly backgroundScope: ChatBackgroundScope;
+  readonly backgroundEmptyOpacity: number;
+  readonly backgroundSessionOpacity: number;
+  /** Each background slot's focal point, slot 1 first. */
+  readonly backgroundFocus: readonly BackgroundFocus[];
+}
+
+export const GLASS_LIMITS = {
+  hue: { min: 0, max: 360 },
+  saturation: { min: 0, max: 100 },
+  darkLightness: { min: 0, max: 30 },
+  sidebarOpacity: { min: 0.15, max: 1 },
+  blurRadius: { min: 1, max: 64 },
+  backgroundOpacity: { min: 0.05, max: 0.65 },
+  backgroundFocus: { min: 0, max: 100 },
+} as const;
+
+export const DEFAULT_GLASS_APPEARANCE: GlassAppearance = {
+  hue: 240,
+  saturation: 0,
+  darkLightness: 0,
+  sidebarOpacity: 0.44,
+  blurRadius: 23,
+  mainPaneGlass: true,
+  insetLayout: true,
+  backgroundEffect: "dither",
+  haze: true,
+  hazeStyle: "fade-blur",
+  backgroundScope: "all",
+  backgroundEmptyOpacity: 0.24,
+  backgroundSessionOpacity: 0.24,
+  backgroundFocus: [DEFAULT_BACKGROUND_FOCUS, DEFAULT_BACKGROUND_FOCUS, DEFAULT_BACKGROUND_FOCUS],
+};
+
+export const BACKGROUND_EFFECTS: readonly BackgroundEffect[] = [
+  "none",
+  "dither",
+  "ascii",
+  "halftone",
+  "scanlines",
+];
+
+export const BACKGROUND_EFFECT_LABELS: Record<BackgroundEffect, string> = {
+  none: "None",
+  dither: "Dither",
+  ascii: "ASCII",
+  halftone: "Halftone",
+  scanlines: "Scanlines",
+};
+
+export const BACKGROUND_EFFECT_DESCRIPTIONS: Record<BackgroundEffect, string> = {
+  none: "Shows the original artwork.",
+  dither: "Rebuilds the artwork with a dithered color palette.",
+  ascii: "Recreates the artwork with colored characters on black.",
+  halftone: "Recreates the artwork with colored print dots on black.",
+  scanlines: "Adds a pronounced horizontal display-line texture.",
+};
+
+export function isBackgroundEffect(value: unknown): value is BackgroundEffect {
+  return BACKGROUND_EFFECTS.includes(value as BackgroundEffect);
+}
+
+export const HAZE_STYLES: readonly HazeStyle[] = ["fade", "blur", "fade-blur"];
+
+export const HAZE_STYLE_LABELS: Record<HazeStyle, string> = {
+  fade: "Fade out",
+  blur: "Blur",
+  "fade-blur": "Fade to blur",
+};
+
+export const HAZE_STYLE_DESCRIPTIONS: Record<HazeStyle, string> = {
+  fade: "The artwork fades away toward the bottom.",
+  blur: "The bottom of the artwork blurs, at full strength.",
+  "fade-blur": "The artwork blurs as it fades away toward the bottom.",
+};
+
+export function isHazeStyle(value: unknown): value is HazeStyle {
+  return HAZE_STYLES.includes(value as HazeStyle);
+}
+
+/**
+ * Haze used to be an effect of its own, over the dithered art unless
+ * hazeDither was off. It is a switch over any effect now; this reads either shape.
+ */
+export function normalizeEffectAndHaze(
+  input: Record<string, unknown>,
+  fallback: { readonly effect: BackgroundEffect; readonly haze: boolean },
+): { effect: BackgroundEffect; haze: boolean } {
+  if (input.effect === "gradient-blur") {
+    return { effect: input.hazeDither === false ? "none" : "dither", haze: true };
+  }
+  const stored = isBackgroundEffect(input.effect);
+  return {
+    effect: stored ? (input.effect as BackgroundEffect) : fallback.effect,
+    // An effect stored before the switch existed had no haze.
+    haze: typeof input.haze === "boolean" ? input.haze : stored ? false : fallback.haze,
+  };
+}
+
+export function isChatBackgroundScope(value: unknown): value is ChatBackgroundScope {
+  return value === "empty" || value === "all";
+}
+
+const STORAGE_KEY = "t3code:glass-appearance:v1";
+/** Names the global image in the effect caches, so every reader shares one render. */
+export const globalBackgroundSourceKey = (revision: number) => `chat-background?v=${revision}`;
+const IMAGE_KEY = "chat-background";
+
+/*
+ * Global backgrounds. Slot 0 is the built-in animated ASCII scene and the
+ * default; image slots are numbered from 1. "+" adds one at the end, and Mod+B
+ * steps through them all and round again. An empty slot shows no background.
+ */
+export type BackgroundSlot = number;
+export const ASCII_BACKGROUND_SLOT = 0;
+// v2: the ASCII scene arrived as the default, so every device starts on it once.
+const SLOT_KEY = "t3code:glass-background-slot:v2";
+const COUNT_KEY = "t3code:glass-background-count:v1";
+/** Before backgrounds could be added there were always three. */
+const DEFAULT_BACKGROUND_COUNT = 3;
+const slotImageKey = (slot: BackgroundSlot) => (slot === 1 ? IMAGE_KEY : `${IMAGE_KEY}-${slot}`);
+const nextSlot = (slot: BackgroundSlot): BackgroundSlot => (slot + 1) % (state.backgroundCount + 1);
+
+export function isBackgroundSlot(value: unknown): value is BackgroundSlot {
+  return (
+    Number.isInteger(value) && (value as number) >= 0 && (value as number) <= state.backgroundCount
+  );
+}
+
+function readInteger(key: string, min: number, fallback: number): number {
+  try {
+    const raw = localStorage.getItem(key);
+    const stored = Number(raw);
+    return raw !== null && Number.isInteger(stored) && stored >= min ? stored : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStored(key: string, value: number) {
+  try {
+    localStorage.setItem(key, String(value));
+  } catch {
+    // Private mode or quota: the change still applies for this session.
+  }
+}
+
+const clampNumber = (value: unknown, min: number, max: number, fallback: number) =>
+  typeof value === "number" && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, value))
+    : fallback;
+
+export function clampBackgroundOpacity(value: unknown, fallback: number): number {
+  const { min, max } = GLASS_LIMITS.backgroundOpacity;
+  return clampNumber(value, min, max, fallback);
+}
+
+function normalizeFocus(raw: unknown, fallback: BackgroundFocus): BackgroundFocus {
+  const input = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+  const { min, max } = GLASS_LIMITS.backgroundFocus;
+  return {
+    x: Math.round(clampNumber(input.x, min, max, fallback.x)),
+    y: Math.round(clampNumber(input.y, min, max, fallback.y)),
+  };
+}
+
+export function normalizeGlassAppearance(raw: unknown): GlassAppearance {
+  const input = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+  const d = DEFAULT_GLASS_APPEARANCE;
+  const L = GLASS_LIMITS;
+  const { effect, haze } = normalizeEffectAndHaze(
+    { effect: input.backgroundEffect, haze: input.haze, hazeDither: input.hazeDither },
+    { effect: d.backgroundEffect, haze: d.haze },
+  );
+  return {
+    hue: Math.round(clampNumber(input.hue, L.hue.min, L.hue.max, d.hue)),
+    saturation: Math.round(
+      clampNumber(input.saturation, L.saturation.min, L.saturation.max, d.saturation),
+    ),
+    darkLightness: Math.round(
+      clampNumber(input.darkLightness, L.darkLightness.min, L.darkLightness.max, d.darkLightness),
+    ),
+    sidebarOpacity: clampNumber(
+      input.sidebarOpacity,
+      L.sidebarOpacity.min,
+      L.sidebarOpacity.max,
+      d.sidebarOpacity,
+    ),
+    blurRadius: Math.round(
+      clampNumber(input.blurRadius, L.blurRadius.min, L.blurRadius.max, d.blurRadius),
+    ),
+    mainPaneGlass: typeof input.mainPaneGlass === "boolean" ? input.mainPaneGlass : d.mainPaneGlass,
+    insetLayout: typeof input.insetLayout === "boolean" ? input.insetLayout : d.insetLayout,
+    backgroundEffect: effect,
+    haze,
+    hazeStyle: isHazeStyle(input.hazeStyle) ? input.hazeStyle : d.hazeStyle,
+    backgroundScope: isChatBackgroundScope(input.backgroundScope)
+      ? input.backgroundScope
+      : d.backgroundScope,
+    backgroundEmptyOpacity: clampBackgroundOpacity(
+      input.backgroundEmptyOpacity,
+      d.backgroundEmptyOpacity,
+    ),
+    backgroundSessionOpacity: clampBackgroundOpacity(
+      input.backgroundSessionOpacity,
+      d.backgroundSessionOpacity,
+    ),
+    backgroundFocus: normalizeSlotFocus(input),
+  };
+}
+
+// Before focal points were per slot, one backgroundFocusX/Y pair served all
+// three; each slot starts from it so nothing moves on upgrade.
+function normalizeSlotFocus(input: Record<string, unknown>): GlassAppearance["backgroundFocus"] {
+  const shared = normalizeFocus(
+    { x: input.backgroundFocusX, y: input.backgroundFocusY },
+    DEFAULT_BACKGROUND_FOCUS,
+  );
+  const stored: unknown[] = Array.isArray(input.backgroundFocus) ? input.backgroundFocus : [];
+  return Array.from({ length: Math.max(DEFAULT_BACKGROUND_COUNT, stored.length) }, (_, index) =>
+    normalizeFocus(stored[index], shared),
+  );
+}
+
+// The defaults changed to a deeper, clearer glass with Haze on. Once per device,
+// stored settings adopt the new values for those keys, so an existing install
+// picks them up; anything changed after that is kept.
+const ADOPTED_DEFAULTS_KEY = "t3code:glass-appearance:adopted-defaults:v2";
+const ADOPTED_DEFAULTS: Partial<GlassAppearance> = {
+  darkLightness: DEFAULT_GLASS_APPEARANCE.darkLightness,
+  sidebarOpacity: DEFAULT_GLASS_APPEARANCE.sidebarOpacity,
+  blurRadius: DEFAULT_GLASS_APPEARANCE.blurRadius,
+  mainPaneGlass: DEFAULT_GLASS_APPEARANCE.mainPaneGlass,
+  backgroundEffect: DEFAULT_GLASS_APPEARANCE.backgroundEffect,
+  haze: DEFAULT_GLASS_APPEARANCE.haze,
+};
+
+/** Stored settings with the adopted defaults applied over them; everything else kept. */
+export function adoptDefaults(stored: unknown): GlassAppearance {
+  return normalizeGlassAppearance({
+    ...(typeof stored === "object" && stored !== null ? stored : {}),
+    ...ADOPTED_DEFAULTS,
+  });
+}
+
+function readStored(): GlassAppearance {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const stored: unknown = raw ? JSON.parse(raw) : null;
+    if (localStorage.getItem(ADOPTED_DEFAULTS_KEY) !== null) {
+      return normalizeGlassAppearance(stored);
+    }
+    const adopted = adoptDefaults(stored);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(adopted));
+    localStorage.setItem(ADOPTED_DEFAULTS_KEY, "1");
+    return adopted;
+  } catch {
+    return DEFAULT_GLASS_APPEARANCE;
+  }
+}
+
+// ── store ──────────────────────────────────────────────────────────────
+
+export interface GlassState {
+  readonly appearance: GlassAppearance;
+  /** Object URL of the global background image, or null when none is set. */
+  readonly imageUrl: string | null;
+  /** Bumps whenever the global image changes, so effect caches key on it. */
+  readonly imageRevision: number;
+  /** Width over height of the global image, once it has been decoded. */
+  readonly imageAspect: number | null;
+  /** The image's luminance on a small grid, for the adaptive ink of text drawn on it. */
+  readonly imageLuminanceGrid: Float32Array | null;
+  /** Which global background is showing, and is edited in settings; 0 is the ASCII scene. */
+  readonly backgroundSlot: BackgroundSlot;
+  /** How many global backgrounds there are; slots run 1 to this. */
+  readonly backgroundCount: number;
+}
+
+let state: GlassState = {
+  appearance: DEFAULT_GLASS_APPEARANCE,
+  imageUrl: null,
+  imageRevision: 0,
+  imageAspect: null,
+  imageLuminanceGrid: null,
+  backgroundSlot: ASCII_BACKGROUND_SLOT,
+  backgroundCount: DEFAULT_BACKGROUND_COUNT,
+};
+const listeners = new Set<() => void>();
+
+export function getGlassState(): GlassState {
+  return state;
+}
+
+export function subscribeGlassState(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function setState(next: GlassState) {
+  state = next;
+  for (const listener of listeners) listener();
+}
+
+export const isDarkScheme = () => document.documentElement.classList.contains("dark");
+
+/** For useSyncExternalStore: fires when the root's classes change, read isDarkScheme. */
+export function subscribeScheme(listener: () => void): () => void {
+  const observer = new MutationObserver(listener);
+  observer.observe(document.documentElement, { attributeFilter: ["class"] });
+  return () => observer.disconnect();
+}
+
+function renderBackground() {
+  const root = document.documentElement;
+  root.classList.toggle("has-ascii-background", state.backgroundSlot === ASCII_BACKGROUND_SLOT);
+  root.classList.toggle("has-chat-background", state.imageUrl !== null);
+  if (state.imageUrl === null) {
+    clearPreparedBackground();
+    return;
+  }
+  void applyPreparedBackground(
+    globalBackgroundSourceKey(state.imageRevision),
+    state.imageUrl,
+    state.appearance.backgroundEffect,
+    !isDarkScheme(),
+  );
+}
+
+export const LUMINANCE_GRID_SIZE = 32;
+
+/** Linear relative luminance of an image on a LUMINANCE_GRID_SIZE square grid. */
+function luminanceGrid(bitmap: ImageBitmap): Float32Array | null {
+  const size = LUMINANCE_GRID_SIZE;
+  const canvas = new OffscreenCanvas(size, size);
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  context.drawImage(bitmap, 0, 0, size, size);
+  const pixels = context.getImageData(0, 0, size, size).data;
+  const grid = new Float32Array(size * size);
+  for (let cell = 0; cell < grid.length; cell += 1) {
+    const offset = cell * 4;
+    grid[cell] =
+      0.2126 * decodeChannel(pixels[offset]! / 255) +
+      0.7152 * decodeChannel(pixels[offset + 1]! / 255) +
+      0.0722 * decodeChannel(pixels[offset + 2]! / 255);
+  }
+  return grid;
+}
+
+const decodeChannel = (value: number) =>
+  value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+
+let appliedBlurRadius: number | null = null;
+
+/** The focal point of the background that's showing. */
+export const showingBackgroundFocus = (s: GlassState = state): BackgroundFocus =>
+  s.appearance.backgroundFocus[s.backgroundSlot - 1] ?? DEFAULT_BACKGROUND_FOCUS;
+
+// The root fallback position; framed elements refine it with focalBackgroundPosition.
+function applyFocusPosition() {
+  const { x, y } = showingBackgroundFocus();
+  document.documentElement.style.setProperty("--chat-background-position", `${x}% ${y}%`);
+}
+
+function applyAppearance(previous: GlassAppearance | null) {
+  const a = state.appearance;
+  const style = document.documentElement.style;
+  style.setProperty("--theme-hue", String(a.hue));
+  style.setProperty("--theme-saturation", `${a.saturation}%`);
+  style.setProperty("--theme-dark-lightness", `${a.darkLightness}%`);
+  style.setProperty("--sidebar-opacity", String(a.sidebarOpacity));
+  style.setProperty("--chat-background-empty-opacity", String(a.backgroundEmptyOpacity));
+  style.setProperty("--chat-background-session-opacity", String(a.backgroundSessionOpacity));
+  applyFocusPosition();
+  const root = document.documentElement;
+  root.classList.toggle("glass-body", a.mainPaneGlass);
+  root.classList.toggle("layout-inset", a.insetLayout);
+  root.classList.toggle("chat-background-empty-only", a.backgroundScope === "empty");
+  root.classList.toggle("chat-background-gradient-blur", a.haze);
+  root.dataset.hazeStyle = a.hazeStyle;
+  if (appliedBlurRadius !== a.blurRadius) {
+    appliedBlurRadius = a.blurRadius;
+    void window.desktopBridge?.setWindowBlurRadius?.(a.blurRadius);
+  }
+  if (previous === null || previous.backgroundEffect !== a.backgroundEffect) renderBackground();
+}
+
+export function updateGlassAppearance(patch: Partial<GlassAppearance>) {
+  const previous = state.appearance;
+  const appearance = normalizeGlassAppearance({ ...previous, ...patch });
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appearance));
+  } catch {
+    // Private mode or quota: the change still applies for this session.
+  }
+  setState({ ...state, appearance });
+  applyAppearance(previous);
+}
+
+/** Moves the focal point of the background that's showing. */
+export function updateBackgroundFocus(focus: BackgroundFocus) {
+  if (state.backgroundSlot === ASCII_BACKGROUND_SLOT) return;
+  const backgroundFocus = [...state.appearance.backgroundFocus];
+  backgroundFocus[state.backgroundSlot - 1] = focus;
+  updateGlassAppearance({ backgroundFocus });
+}
+
+export function resetGlassAppearance(keys: readonly (keyof GlassAppearance)[]) {
+  const patch: Record<string, unknown> = {};
+  for (const key of keys) patch[key] = DEFAULT_GLASS_APPEARANCE[key];
+  updateGlassAppearance(patch as Partial<GlassAppearance>);
+}
+
+/*
+ * Each slot keeps its object URL and revision while it lives, so flipping back
+ * reuses the same effect render instead of redrawing it. A revision only
+ * changes when that slot's image does.
+ */
+interface SlotImage {
+  readonly url: string;
+  readonly revision: number;
+  aspect: number | null;
+  luminanceGrid: Float32Array | null;
+}
+const slotImages = new Map<BackgroundSlot, SlotImage>();
+const loadedSlots = new Set<BackgroundSlot>();
+let lastRevision = 0;
+
+function storeSlotImage(slot: BackgroundSlot, blob: Blob | null): SlotImage | null {
+  const previous = slotImages.get(slot);
+  if (previous) URL.revokeObjectURL(previous.url);
+  slotImages.delete(slot);
+  loadedSlots.add(slot);
+  if (!blob) return null;
+  const entry: SlotImage = {
+    url: URL.createObjectURL(blob),
+    revision: ++lastRevision,
+    aspect: null,
+    luminanceGrid: null,
+  };
+  slotImages.set(slot, entry);
+  // The focal point math needs the image's shape; only the showing image updates state.
+  void createImageBitmap(blob)
+    .then((bitmap) => {
+      entry.aspect = bitmap.width / bitmap.height;
+      entry.luminanceGrid = luminanceGrid(bitmap);
+      bitmap.close();
+      if (state.imageRevision !== entry.revision) return;
+      setState({ ...state, imageAspect: entry.aspect, imageLuminanceGrid: entry.luminanceGrid });
+    })
+    .catch(() => {});
+  return entry;
+}
+
+function showImage(entry: SlotImage | null) {
+  setState({
+    ...state,
+    imageUrl: entry?.url ?? null,
+    imageRevision: entry?.revision ?? ++lastRevision,
+    imageAspect: entry?.aspect ?? null,
+    imageLuminanceGrid: entry?.luminanceGrid ?? null,
+  });
+  renderBackground();
+}
+
+async function loadSlot(slot: BackgroundSlot): Promise<SlotImage | null> {
+  if (slot === ASCII_BACKGROUND_SLOT) return null;
+  if (!loadedSlots.has(slot)) {
+    const blob = await readImage(slotImageKey(slot));
+    // A choice made while this read was in flight wins.
+    if (!loadedSlots.has(slot)) storeSlotImage(slot, blob);
+  }
+  return slotImages.get(slot) ?? null;
+}
+
+/** Renders the next slot's effect ahead of time, so the next flip is instant. */
+function prewarmSlot(slot: BackgroundSlot) {
+  void loadSlot(slot)
+    .then((entry) => {
+      if (!entry) return;
+      const effect = state.appearance.backgroundEffect;
+      if (effect === "none") return;
+      return prepareBackgroundEffect(
+        globalBackgroundSourceKey(entry.revision),
+        entry.url,
+        effect,
+        !isDarkScheme(),
+      );
+    })
+    .catch(() => {});
+}
+
+/** Sets the image of the slot that's showing. */
+export async function setChatBackgroundImage(file: Blob): Promise<void> {
+  const slot = state.backgroundSlot;
+  if (slot === ASCII_BACKGROUND_SLOT) return;
+  await writeImage(slotImageKey(slot), file);
+  const entry = storeSlotImage(slot, file);
+  if (state.backgroundSlot === slot) showImage(entry);
+}
+
+/** "+": a new background at the end, showing the chosen image. */
+export async function addChatBackground(file: Blob): Promise<void> {
+  const slot = state.backgroundCount + 1;
+  await writeImage(slotImageKey(slot), file);
+  storeSlotImage(slot, file);
+  setState({ ...state, backgroundCount: slot });
+  writeStored(COUNT_KEY, slot);
+  await showSlot(slot);
+}
+
+/**
+ * Removes the background that's showing, and the later ones move down a
+ * number with their images, renders, and focal points. The last one left
+ * only loses its image.
+ */
+export async function removeChatBackgroundImage(): Promise<void> {
+  const slot = state.backgroundSlot;
+  const count = state.backgroundCount;
+  if (slot === ASCII_BACKGROUND_SLOT) return;
+  if (count === 1) {
+    await deleteImage(slotImageKey(slot));
+    storeSlotImage(slot, null);
+    if (state.backgroundSlot === slot) showImage(null);
+    return;
+  }
+  for (let to = slot; to < count; to += 1) {
+    const blob = await readImage(slotImageKey(to + 1));
+    if (blob) await writeImage(slotImageKey(to), blob);
+    else await deleteImage(slotImageKey(to));
+  }
+  await deleteImage(slotImageKey(count));
+  const removed = slotImages.get(slot);
+  if (removed) URL.revokeObjectURL(removed.url);
+  for (let to = slot; to < count; to += 1) {
+    const moved = slotImages.get(to + 1);
+    if (moved) slotImages.set(to, moved);
+    else slotImages.delete(to);
+    if (loadedSlots.has(to + 1)) loadedSlots.add(to);
+    else loadedSlots.delete(to);
+  }
+  slotImages.delete(count);
+  loadedSlots.delete(count);
+  updateGlassAppearance({
+    backgroundFocus: state.appearance.backgroundFocus.filter((_, index) => index !== slot - 1),
+  });
+  setState({ ...state, backgroundCount: count - 1 });
+  writeStored(COUNT_KEY, count - 1);
+  await showSlot(Math.min(slot, count - 1));
+}
+
+export async function setChatBackgroundSlot(slot: BackgroundSlot): Promise<void> {
+  if (slot === state.backgroundSlot) return;
+  await showSlot(slot);
+}
+
+/** Shows a slot even when its number is already showing, as after a removal. */
+async function showSlot(slot: BackgroundSlot): Promise<void> {
+  writeStored(SLOT_KEY, slot);
+  setState({ ...state, backgroundSlot: slot });
+  applyFocusPosition();
+  const entry = await loadSlot(slot).catch((error: unknown) => {
+    console.error("Could not load the chat background image.", error);
+    return null;
+  });
+  if (state.backgroundSlot !== slot) return; // flipped again meanwhile
+  showImage(entry);
+  prewarmSlot(nextSlot(slot));
+}
+
+/** Mod+B: show the next background. */
+export function flipChatBackground(): void {
+  void setChatBackgroundSlot(nextSlot(state.backgroundSlot));
+}
+
+let initialized = false;
+
+export function initGlassAppearance() {
+  if (initialized || typeof document === "undefined") return;
+  initialized = true;
+  const backgroundCount = readInteger(COUNT_KEY, 1, DEFAULT_BACKGROUND_COUNT);
+  const storedSlot = readInteger(SLOT_KEY, 0, ASCII_BACKGROUND_SLOT);
+  setState({
+    ...state,
+    appearance: readStored(),
+    backgroundCount,
+    backgroundSlot: storedSlot <= backgroundCount ? storedSlot : ASCII_BACKGROUND_SLOT,
+  });
+  applyAppearance(null);
+  // Effects that draw on paper (ASCII, halftone, scanlines) follow light and
+  // dark. Only a dark flip re-renders: renderBackground toggles root classes too.
+  let dark = isDarkScheme();
+  new MutationObserver(() => {
+    if (dark === isDarkScheme()) return;
+    dark = isDarkScheme();
+    // Plain art and dither look the same in both schemes; re-rendering them only blinks the art.
+    const effect = state.appearance.backgroundEffect;
+    if (effect === "none" || effect === "dither") return;
+    if (state.imageUrl !== null) renderBackground();
+  }).observe(document.documentElement, { attributeFilter: ["class"] });
+  const slot = state.backgroundSlot;
+  loadSlot(slot)
+    .then((entry) => {
+      if (state.backgroundSlot !== slot) return;
+      if (entry) showImage(entry);
+      prewarmSlot(nextSlot(slot));
+    })
+    .catch((error: unknown) => {
+      console.error("Could not load the chat background image.", error);
+    });
+}

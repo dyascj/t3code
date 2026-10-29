@@ -13,13 +13,14 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/
 import { SidebarInset } from "../components/ui/sidebar";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { useNewThreadHandler } from "../hooks/useHandleNewThread";
+import { useScratchProject } from "../hooks/useScratchProject";
 import {
   readProject,
   useAllEnvironmentShellsBootstrapped,
   useProjects,
   useThreadShells,
 } from "../state/entities";
-import { useEnvironments } from "../state/environments";
+import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
 
 function ChatIndexRouteView() {
   const { authGateState } = Route.useRouteContext();
@@ -33,6 +34,12 @@ function ChatIndexRouteView() {
   return <IndexDraftLanding />;
 }
 
+/**
+ * Landing on the index route (Home) drops straight into the No project draft,
+ * whose empty state carries the week's stats. Without No project threads it
+ * opens a draft in the most recently active project, and falls back to an
+ * add-project hero when no project exists yet.
+ */
 function IndexDraftLanding() {
   const projects = useProjects();
   const threads = useThreadShells();
@@ -41,6 +48,9 @@ function IndexDraftLanding() {
   const router = useRouter();
   // Read at effect time; this page can stay mounted while the router is already navigating away.
   const isStillOnIndex = useEffectEvent(() => router.state.location.pathname === "/");
+  const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const { scratchEnvironmentId, openScratchProject } = useScratchProject();
+  const scratchTarget = bootstrapped ? scratchEnvironmentId(primaryEnvironmentId) : null;
   const startedAttemptRef = useRef<number | null>(null);
   const [startState, setStartState] = useState({ failed: false, retryRequest: 0 });
 
@@ -51,15 +61,31 @@ function IndexDraftLanding() {
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- starts a draft thread in the most recent project and navigates to it while still on the index
   useEffect(() => {
     // Starting a draft after the user has left would replace the page they picked.
-    if (mostRecentProject === null || startedAttemptRef.current === attempt || !isStillOnIndex()) {
+    if (
+      (scratchTarget === null && mostRecentProject === null) ||
+      startedAttemptRef.current === attempt ||
+      !isStillOnIndex()
+    ) {
       return;
     }
-    const projectRef = scopeProjectRef(mostRecentProject.environmentId, mostRecentProject.id);
-    if (readProject(projectRef) === null) {
+    // A project removed since this render is gone from the store; the next
+    // render picks another one.
+    if (
+      scratchTarget === null &&
+      mostRecentProject !== null &&
+      readProject(scopeProjectRef(mostRecentProject.environmentId, mostRecentProject.id)) === null
+    ) {
       return;
     }
     startedAttemptRef.current = attempt;
-    void handleNewThread(projectRef, { replace: true })
+    void (async () => {
+      const project =
+        scratchTarget === null ? mostRecentProject : await openScratchProject(scratchTarget);
+      if (project === null) throw new Error("No project to start a draft in.");
+      return handleNewThread(scopeProjectRef(project.environmentId, project.id), {
+        replace: true,
+      });
+    })()
       .then((opened) => {
         if (opened === null) {
           setStartState((state) => ({ ...state, retryRequest: state.retryRequest + 1 }));
@@ -68,9 +94,9 @@ function IndexDraftLanding() {
       .catch(() => {
         setStartState((state) => ({ ...state, failed: true }));
       });
-  }, [attempt, handleNewThread, mostRecentProject]);
+  }, [attempt, handleNewThread, mostRecentProject, openScratchProject, scratchTarget]);
 
-  if (mostRecentProject !== null) {
+  if (mostRecentProject !== null || scratchTarget !== null) {
     return startState.failed ? (
       <DraftStartError
         onRetry={() => {

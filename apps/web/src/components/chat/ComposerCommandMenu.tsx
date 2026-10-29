@@ -193,6 +193,7 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
       aria-selected={props.isActive}
       value={props.item.id}
       data-composer-item-id={props.item.id}
+      data-composer-item-type={props.item.type}
       active={props.isActive}
       onMouseMove={() => {
         if (!props.isActive) props.onHighlight(props.item.id);
@@ -229,7 +230,10 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
         />
       ) : null}
       <span className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="min-w-0 max-w-[45%] shrink-0 truncate font-sans text-xs font-medium">
+        <span
+          data-composer-item-label
+          className="min-w-0 max-w-[45%] shrink-0 truncate font-sans text-tab"
+        >
           {isSlashSkill ? (
             <>
               <span className="text-secondary-label">/skill:</span>
@@ -239,7 +243,7 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
             props.item.label
           )}
         </span>
-        <span className="min-w-0 flex-1 truncate text-left text-secondary-label text-xs">
+        <span className="min-w-0 flex-1 truncate text-left text-2xs text-muted-foreground">
           {props.item.description}
         </span>
         {skillSourceKind ? (

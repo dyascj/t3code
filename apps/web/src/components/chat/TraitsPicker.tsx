@@ -24,7 +24,7 @@ import {
   isClaudeUltrathinkPrompt,
   normalizeModelSlug,
 } from "@t3tools/shared/model";
-import { memo, type ReactNode, useRef } from "react";
+import { memo, type CSSProperties, type ReactNode, useRef } from "react";
 import { GaugeIcon, ZapIcon } from "lucide-react";
 import {
   Menu,
@@ -104,6 +104,44 @@ type TraitsPersistence =
       onModelOptionsChange: (nextOptions: ProviderOptions | undefined) => void;
     };
 
+// The top effort levels light a tile field when highlighted (MonoCode's effort tiles).
+// The grid and its fill pattern are fixed, so they are built once.
+const EFFORT_TILE_COLUMNS = 32;
+const EFFORT_TILE_ROWS = 5;
+const EFFORT_TILES = Array.from({ length: EFFORT_TILE_COLUMNS * EFFORT_TILE_ROWS }, (_, index) => {
+  const column = index % EFFORT_TILE_COLUMNS;
+  const row = Math.floor(index / EFFORT_TILE_COLUMNS);
+  const centerColumn = (EFFORT_TILE_COLUMNS - 1) / 2;
+  const centerRow = (EFFORT_TILE_ROWS - 1) / 2;
+  return {
+    filled: (index * 73 + index * index * 19 + 23) % 101 < 65,
+    style: {
+      "--tile-distance": Math.hypot(
+        (column - centerColumn) / centerColumn,
+        (row - centerRow) / centerRow,
+      ),
+    } as CSSProperties,
+  };
+});
+
+function effortTone(optionId: string): "ultra" | "max" | undefined {
+  return optionId === "ultrathink" ? "ultra" : optionId === "max" ? "max" : undefined;
+}
+
+function EffortTiles() {
+  return (
+    <span className="composer-effort-tiles" aria-hidden="true">
+      {EFFORT_TILES.map((tile, index) => (
+        <span
+          // oxlint-disable-next-line react/no-array-index-key -- a fixed grid.
+          key={index}
+          data-filled={tile.filled || undefined}
+          style={tile.style}
+        />
+      ))}
+    </span>
+  );
+}
 function DefaultBadge() {
   return (
     <Badge variant="outline" size="sm" className="min-w-0">
@@ -455,10 +493,12 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
                   <MenuRadioItem
                     key={option.id}
                     value={option.id}
+                    data-effort-tone={effortTone(option.id)}
                     hideIndicator
                     closeOnClick
                     disabled={ultrathinkInBodyText && descriptor.id === primarySelectDescriptor?.id}
                   >
+                    {effortTone(option.id) ? <EffortTiles /> : null}
                     <span className="flex w-full min-w-0 flex-col">
                       <span className="flex min-w-0 items-center gap-1">
                         <span className="min-w-0 truncate">{option.label}</span>

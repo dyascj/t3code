@@ -1502,7 +1502,7 @@ export default function GitActionsControl({
           className={cn(
             "shrink-0",
             THREAD_DETAILS_PANEL_SPLIT_GROUP_CLASS,
-            gitActionProgress && "bg-black/[0.035] dark:bg-white/[0.055]",
+            gitActionProgress && "bg-foreground/5",
           )}
         >
           {gitActionProgress ? (

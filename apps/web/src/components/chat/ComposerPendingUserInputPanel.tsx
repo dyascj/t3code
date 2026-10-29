@@ -101,6 +101,13 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       !customAnswerActive && progress.selectedOptionValues.includes(option.value ?? option.label),
   );
   const isCollapsed = collapsedQuestionId !== null && collapsedQuestionId === activeQuestion?.id;
+  // The direction of the last page change, so the new page slides in from that side.
+  const [page, setPage] = useState<{ index: number; direction?: "next" | "back" }>({
+    index: questionIndex,
+  });
+  if (page.index !== questionIndex) {
+    setPage({ index: questionIndex, direction: questionIndex > page.index ? "next" : "back" });
+  }
 
   if (
     optimisticSingleSelect &&
@@ -234,7 +241,11 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       </CollapsibleTrigger>
       <CollapsiblePanel>
         <ComposerBanner.Scroll>
-          <ComposerBanner.Body className="ps-6 pe-4 pb-1 wrap-anywhere sm:ps-5.5">
+          <ComposerBanner.Body
+            key={questionIndex}
+            className="ps-6 pe-4 pb-1 wrap-anywhere sm:ps-5.5"
+            data-question-page={page.direction}
+          >
             <ChatMarkdown
               text={activeQuestion.question}
               cwd={cwd}
@@ -251,8 +262,8 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                 const isSelected =
                   isOptimisticallySelected || draftSelectedOptions?.[index] === true;
                 const className = cn(
-                  "group flex w-full items-start gap-2.5 rounded-md bg-transparent py-1.5 ps-2 text-left sm:ps-1.5 outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/25",
-                  isSelected ? "text-foreground" : "text-foreground/70 hover:bg-muted/30",
+                  "group flex w-full items-start gap-2.5 rounded-lg bg-transparent py-1.5 ps-2 text-left sm:ps-1.5 outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/25",
+                  isSelected ? "text-foreground" : "text-foreground/70 hover:bg-foreground/5",
                   (disabled || isResponding) && "opacity-50 cursor-not-allowed",
                   !disabled && !isResponding && "cursor-pointer",
                 );
@@ -267,9 +278,9 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                       )}
                     </span>
                     <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                      <span className="text-sm font-medium">{option.label}</span>
+                      <span className="font-medium text-tab">{option.label}</span>
                       {option.description && option.description !== option.label ? (
-                        <span className="text-secondary-label text-2xs">{option.description}</span>
+                        <span className="text-2xs text-muted-foreground">{option.description}</span>
                       ) : null}
                     </div>
                     {index < 9 ? (

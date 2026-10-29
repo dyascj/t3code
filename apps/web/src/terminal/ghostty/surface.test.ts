@@ -126,6 +126,7 @@ describe("GhosttyTerminalSurface visibility", () => {
       restore() {},
       save() {},
       setTransform() {},
+      clearRect: (...args: number[]) => paint("clearRect", args),
       fillRect: (...args: number[]) => paint("fillRect", args),
       strokeRect: (...args: number[]) => paint("strokeRect", args),
       fillText: (...args: [string, number, number, number?]) => paint("fillText", args),

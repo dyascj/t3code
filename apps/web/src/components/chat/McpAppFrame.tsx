@@ -405,7 +405,7 @@ export function McpAppFrame(props: {
 
   if (closed) {
     return (
-      <div className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-muted-foreground text-xs">
+      <div className="flex items-center justify-between gap-2 rounded-lg border border-foreground/10 px-3 py-2 text-muted-foreground text-xs">
         <span>The {app.server} app was closed</span>
         <Button
           size="xs"
@@ -435,7 +435,7 @@ export function McpAppFrame(props: {
         data-mcp-app-fullscreen={fullscreen ? "" : undefined}
         className={cn(
           "relative size-full overflow-hidden",
-          app.prefersBorder === true && !fullscreen && "rounded-lg border border-border",
+          app.prefersBorder === true && !fullscreen && "rounded-lg border border-foreground/10",
           fullscreen
             ? "fixed inset-0 m-0 flex h-dvh max-h-none w-dvw max-w-none flex-col border-0 bg-background p-0"
             : "block! static! m-0 border-0 bg-transparent p-0 text-inherit",
@@ -444,7 +444,7 @@ export function McpAppFrame(props: {
         {fullscreen ? (
           <div
             ref={attachFullscreenChrome}
-            className="flex h-10 shrink-0 items-center justify-between border-border border-b px-3 text-sm"
+            className="flex h-10 shrink-0 items-center justify-between border-foreground/10 border-b px-3 text-sm"
           >
             <span className="truncate">{app.server}</span>
             <Button

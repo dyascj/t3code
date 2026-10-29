@@ -401,9 +401,10 @@ export function getStandardThemeColors(appearance: ThemeAppearance): ThemeColors
   return (standardLightThemeColors ??= decodeThemeColors(T3_CODE_LIGHT_THEME_COLORS));
 }
 
-// index.css paints the light bubble a step darker than the shared palette mobile uses.
+// index.css paints the light bubble a step darker than the shared palette mobile uses, and the
+// glass canvas (and the raised wash over it) at the default 97% `--theme-base-light`.
 const STANDARD_WEB_PAINTED_COLORS: Record<ThemeAppearance, Partial<ThemeColors>> = {
-  light: { messageSurface: "#ebebed" },
+  light: { canvas: "#f7f7f7", surfaceRaised: "#f9f9f9", messageSurface: "#ebebed" },
   dark: { canvas: "#000000", messageSurface: "#1e1e1e" },
 };
 
