@@ -22,14 +22,6 @@ html:not(.dark) [data-slot="composer-shell"] {
   background: color-mix(in srgb, #459bf7 30%, transparent);
 }
 
-/* Toolbar pills: the chevron turns over while its menu is open. */
-[data-slot="composer-shell"] [data-composer-control-chevron] {
-  transition: rotate var(--motion-feedback-duration, 120ms) var(--motion-ease-out, ease-out);
-}
-[data-slot="composer-shell"] [data-popup-open] [data-composer-control-chevron] {
-  rotate: 180deg;
-}
-
 /* Plan mode: a yellow pill. Turning it on runs a halo, a sheen across the pill
    and a shimmer over its label, once. */
 [data-composer-plan-toggle][aria-pressed="true"] {
@@ -292,7 +284,6 @@ html:not([data-theme-id]) .composer-tiptap .chat-markdown-codeblock-header {
   [data-chat-composer-top-drawer] {
     animation: none;
   }
-  [data-slot="composer-shell"] [data-composer-control-chevron],
   .composer-effort-tiles {
     transition: none;
   }

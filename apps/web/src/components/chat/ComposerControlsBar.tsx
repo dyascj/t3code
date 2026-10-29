@@ -34,10 +34,6 @@ import { resolveComposerControlsOwnership } from "./composerControlsOwnership";
  * The composer footer controls: model picker, traits, mode controls and the overflow menu for
  * blocks that do not fit. Rendered in the expanded footer or the resting controls host.
  */
-// Model and effort sit a word space apart, so hover and open states brighten text, not a box.
-const TEXT_CONTROL_STATES =
-  "hover:bg-transparent data-pressed:bg-transparent data-popup-open:bg-transparent data-pressed:text-foreground data-popup-open:text-foreground";
-
 export function ComposerControlsBar(props: {
   environmentId: EnvironmentId;
   routeKind: ChatComposerProps["routeKind"];
@@ -166,7 +162,7 @@ export function ComposerControlsBar(props: {
     planModeEnabled,
     isComposerOwned: true,
     effortDisplay: props.effortDisplay,
-    triggerClassName: cn("ps-1.5 pe-1", TEXT_CONTROL_STATES),
+    triggerClassName: "ps-1.5 pe-1",
     // Permissions always live in the effort menu, so the section never unmounts while open.
     extraMenuContent: (
       <ComposerPermissionsSection
@@ -272,7 +268,6 @@ export function ComposerControlsBar(props: {
       size={composerControlsCollapsed ? "xs" : "sm"}
       triggerClassName={cn(
         "pe-1",
-        TEXT_CONTROL_STATES,
         composerControlsCollapsed ? "min-w-13 shrink text-xs!" : "min-w-13",
       )}
       terminalOpen={terminalOpen}
