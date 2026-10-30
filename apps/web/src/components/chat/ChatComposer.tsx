@@ -3438,7 +3438,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     ref={attachExpandedComposerControls}
                     data-chat-composer-controls="footer"
                     data-chat-composer-footer-controls="true"
-                    className="relative flex min-w-0 flex-1 items-center justify-end gap-0.5"
+                    className="relative flex min-w-0 flex-1 items-center justify-end gap-1"
                   >
                     {composerControls}
                   </div>

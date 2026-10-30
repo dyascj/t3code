@@ -3204,6 +3204,18 @@ html.has-chat-background.chat-background-effect-ready.chat-background-gradient-b
   backdrop-filter: blur(24px);
 }
 
+/* Settings and Usage open as one large modal (AppRouteModal). A page of text needs a
+   denser base than a small dialog, so it takes the peek card's glass and corners. */
+:root [data-slot="dialog-popup"][data-app-modal].dialog-glass {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background) 82%, transparent) !important;
+}
+@media (max-width: 639px) {
+  :root [data-slot="dialog-popup"][data-app-modal].dialog-glass {
+    border-radius: 0;
+  }
+}
+
 /* The composer: neutral glass with a hairline that firms up on focus. The
    blur is stronger than the reference's because the conversation scrolls
    under this composer. */
