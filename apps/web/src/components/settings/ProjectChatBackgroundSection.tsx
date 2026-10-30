@@ -4,6 +4,7 @@ import {
   isBackgroundEffect,
 } from "../../glass/glassAppearance";
 import {
+  backgroundEffectFor,
   defaultProjectChatBackgroundSettings,
   removeProjectChatBackground,
   setProjectChatBackgroundImage,
@@ -38,9 +39,10 @@ export function ProjectChatBackgroundSection({
 }) {
   const background = useProjectChatBackground(projectKey);
   const settings = background?.settings ?? defaultProjectChatBackgroundSettings();
+  const video = background?.kind === "video";
   const previewUrl = useBackgroundEffectUrl(
-    background?.src ?? null,
-    settings.effect,
+    background && !video ? background.src : null,
+    backgroundEffectFor(background),
     projectBackgroundSourceKey(background?.revision ?? 0),
   );
   const { busy, error, run } = useImageTask();
@@ -50,15 +52,16 @@ export function ProjectChatBackgroundSection({
     <SettingsSection
       id="project-chat-background"
       title="Background image"
-      description={`Choose a background image for ${projectName}.`}
+      description={`Choose a background image, GIF, or video for ${projectName}.`}
     >
       <BackgroundImagePicker
         imageUrl={background ? (previewUrl ?? background.src) : null}
+        video={video}
         haze={settings.haze}
         emptyOpacity={settings.emptyOpacity}
         busy={busy}
         error={error}
-        emptyLabel="Choose image"
+        emptyLabel="Choose image or video"
         note={
           background
             ? "This image overrides the global background for this project."
@@ -73,7 +76,11 @@ export function ProjectChatBackgroundSection({
         <>
           <SettingsRow
             title="Background effect"
-            description={BACKGROUND_EFFECT_DESCRIPTIONS[settings.effect]}
+            description={
+              background.kind === "image"
+                ? BACKGROUND_EFFECT_DESCRIPTIONS[settings.effect]
+                : "GIFs and videos play as they are; effects apply to still images."
+            }
             control={
               <Segmented
                 label="Project background effect"

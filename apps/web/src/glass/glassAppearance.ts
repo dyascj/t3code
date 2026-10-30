@@ -1,10 +1,18 @@
 import {
   applyPreparedBackground,
+  applyVideoBackground,
   clearPreparedBackground,
   prepareBackgroundEffect,
   type BackgroundEffect,
 } from "./backgroundEffects";
-import { deleteImage, readImage, writeImage } from "./imageStore";
+import {
+  decodeFirstFrame,
+  deleteImage,
+  mediaKind,
+  type MediaKind,
+  readImage,
+  writeImage,
+} from "./imageStore";
 
 /*
  * Color, translucency, and chat background settings.
@@ -304,6 +312,8 @@ export interface GlassState {
   readonly appearance: GlassAppearance;
   /** Object URL of the global background image, or null when none is set. */
   readonly imageUrl: string | null;
+  /** Whether the global background is a still image, a GIF, or a video. */
+  readonly imageKind: MediaKind;
   /** Bumps whenever the global image changes, so effect caches key on it. */
   readonly imageRevision: number;
   /** Width over height of the global image, once it has been decoded. */
@@ -319,6 +329,7 @@ export interface GlassState {
 let state: GlassState = {
   appearance: DEFAULT_GLASS_APPEARANCE,
   imageUrl: null,
+  imageKind: "image",
   imageRevision: 0,
   imageAspect: null,
   imageLuminanceGrid: null,
@@ -358,10 +369,14 @@ function renderBackground() {
     clearPreparedBackground();
     return;
   }
+  if (state.imageKind === "video") {
+    applyVideoBackground();
+    return;
+  }
   void applyPreparedBackground(
     globalBackgroundSourceKey(state.imageRevision),
     state.imageUrl,
-    state.appearance.backgroundEffect,
+    state.imageKind === "image" ? state.appearance.backgroundEffect : "none",
     !isDarkScheme(),
   );
 }
@@ -458,6 +473,7 @@ export function resetGlassAppearance(keys: readonly (keyof GlassAppearance)[]) {
  */
 interface SlotImage {
   readonly url: string;
+  readonly kind: MediaKind;
   readonly revision: number;
   aspect: number | null;
   luminanceGrid: Float32Array | null;
@@ -474,13 +490,14 @@ function storeSlotImage(slot: BackgroundSlot, blob: Blob | null): SlotImage | nu
   if (!blob) return null;
   const entry: SlotImage = {
     url: URL.createObjectURL(blob),
+    kind: mediaKind(blob),
     revision: ++lastRevision,
     aspect: null,
     luminanceGrid: null,
   };
   slotImages.set(slot, entry);
   // The focal point math needs the image's shape; only the showing image updates state.
-  void createImageBitmap(blob)
+  void decodeFirstFrame(blob)
     .then((bitmap) => {
       entry.aspect = bitmap.width / bitmap.height;
       entry.luminanceGrid = luminanceGrid(bitmap);
@@ -496,6 +513,7 @@ function showImage(entry: SlotImage | null) {
   setState({
     ...state,
     imageUrl: entry?.url ?? null,
+    imageKind: entry?.kind ?? "image",
     imageRevision: entry?.revision ?? ++lastRevision,
     imageAspect: entry?.aspect ?? null,
     imageLuminanceGrid: entry?.luminanceGrid ?? null,
@@ -517,7 +535,7 @@ async function loadSlot(slot: BackgroundSlot): Promise<SlotImage | null> {
 function prewarmSlot(slot: BackgroundSlot) {
   void loadSlot(slot)
     .then((entry) => {
-      if (!entry) return;
+      if (entry?.kind !== "image") return;
       const effect = state.appearance.backgroundEffect;
       if (effect === "none") return;
       return prepareBackgroundEffect(

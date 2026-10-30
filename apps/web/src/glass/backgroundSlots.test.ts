@@ -3,13 +3,19 @@ import { beforeAll, describe, expect, it, vi } from "vite-plus/test";
 // IndexedDB and the effects worker aren't in jsdom: an in-memory image store,
 // and effects that do nothing, are enough to test which image shows.
 const images = new Map<string, Blob>();
-vi.mock("./imageStore", () => ({
+vi.mock("./imageStore", async (importActual) => ({
+  mediaKind: (await importActual<typeof import("./imageStore")>()).mediaKind,
+  decodeFirstFrame: () => Promise.reject(new Error("no decoder in tests")),
   readImage: async (key: string) => images.get(key) ?? null,
   writeImage: async (key: string, blob: Blob) => void images.set(key, blob),
   deleteImage: async (key: string) => void images.delete(key),
 }));
+// The effect each render asked for, or "video" for a video background.
+const applied: string[] = [];
 vi.mock("./backgroundEffects", () => ({
-  applyPreparedBackground: async () => {},
+  applyPreparedBackground: async (_key: string, _src: string, effect: string) =>
+    void applied.push(effect),
+  applyVideoBackground: () => void applied.push("video"),
   clearPreparedBackground: () => {},
   prepareBackgroundEffect: async () => new Blob(),
 }));
@@ -129,5 +135,14 @@ describe("background slots", () => {
       imageUrl: null,
     });
     expect(images.size).toBe(0);
+  });
+
+  it("plays a GIF or a video as it is, without the effect", async () => {
+    await setChatBackgroundSlot(1);
+    applied.length = 0;
+    await setChatBackgroundImage(new Blob(["gif"], { type: "image/gif" }));
+    await setChatBackgroundImage(new Blob(["mp4"], { type: "video/mp4" }));
+    expect(applied).toEqual(["none", "video"]);
+    expect(getGlassState().imageKind).toBe("video");
   });
 });
