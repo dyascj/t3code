@@ -103,6 +103,12 @@ export function clearPreparedBackground() {
   document.documentElement.classList.remove("chat-background-effect-ready");
 }
 
+/** A video plays in its own element (BackgroundVideo); the CSS image stays empty. */
+export function applyVideoBackground() {
+  clearPreparedBackground();
+  document.documentElement.classList.add("chat-background-effect-ready");
+}
+
 export async function applyPreparedBackground(
   sourceKey: string,
   src: string,

@@ -39,6 +39,7 @@ import {
   updateBackgroundFocus,
   updateGlassAppearance,
 } from "../../glass/glassAppearance";
+import { BackgroundVideo } from "../../glass/BackgroundVideo";
 import { GradientBlurBackground } from "../../glass/GradientBlurBackground";
 import { useFocalBackgroundRef } from "../../glass/focalPoint";
 import { useBackgroundEffectUrl } from "../../glass/projectChatBackground";
@@ -308,12 +309,15 @@ export function BackgroundImagePicker({
   error,
   onChoose,
   onRemove,
-  emptyLabel = "Choose an image",
+  emptyLabel = "Choose an image or video",
   note,
   followFocalPoint = false,
   removable,
+  video = false,
 }: {
   imageUrl: string | null;
+  /** imageUrl is a video, which plays in an element instead of a CSS background. */
+  video?: boolean;
   haze: boolean;
   emptyOpacity: number;
   busy: boolean;
@@ -357,13 +361,16 @@ export function BackgroundImagePicker({
             {haze ? (
               <GradientBlurBackground
                 className="gradient-blur-preview absolute inset-0"
+                videoSrc={video ? imageUrl : null}
                 style={
                   {
-                    "--chat-background-image": `url(${JSON.stringify(imageUrl)})`,
+                    "--chat-background-image": video ? "none" : `url(${JSON.stringify(imageUrl)})`,
                     opacity: emptyOpacity,
                   } as CSSProperties
                 }
               />
+            ) : video ? (
+              <BackgroundVideo src={imageUrl} style={{ opacity: emptyOpacity }} />
             ) : (
               <div
                 aria-hidden
@@ -422,10 +429,12 @@ const FOCUS_KEY_STEP = 5;
  */
 function FocusPointSurface({
   imageUrl,
+  video,
   focus,
   onChange,
 }: {
   imageUrl: string;
+  video: boolean;
   focus: BackgroundFocus;
   onChange: (focus: BackgroundFocus) => void;
 }) {
@@ -463,7 +472,20 @@ function FocusPointSurface({
         onChange({ x: clamp(focus.x + delta[0]!), y: clamp(focus.y + delta[1]!) });
       }}
     >
-      <img alt="" draggable={false} src={imageUrl} className="block max-h-[65vh] max-w-full" />
+      {video ? (
+        <video
+          aria-hidden
+          src={imageUrl}
+          autoPlay
+          muted
+          loop
+          playsInline
+          disablePictureInPicture
+          className="block max-h-[65vh] max-w-full"
+        />
+      ) : (
+        <img alt="" draggable={false} src={imageUrl} className="block max-h-[65vh] max-w-full" />
+      )}
       <span
         aria-hidden
         className="pointer-events-none absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm ring-1 ring-black/40"
@@ -476,12 +498,14 @@ function FocusPointSurface({
 /** A thumbnail of the focal point that opens a large view to place it. */
 function FocusPointPicker({
   imageUrl,
+  video,
   imageAspect,
   slot,
   focus,
   onChange,
 }: {
   imageUrl: string;
+  video: boolean;
   imageAspect: number | null;
   slot: number;
   focus: BackgroundFocus;
@@ -496,11 +520,12 @@ function FocusPointPicker({
         className="relative h-20 shrink-0 cursor-zoom-in overflow-hidden rounded-md border border-border bg-no-repeat outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         style={{
           aspectRatio: imageAspect ?? 16 / 9,
-          backgroundImage: `url(${JSON.stringify(imageUrl)})`,
+          backgroundImage: video ? undefined : `url(${JSON.stringify(imageUrl)})`,
           backgroundSize: "100% 100%",
         }}
         onClick={() => setOpen(true)}
       >
+        {video ? <BackgroundVideo src={imageUrl} className="object-fill" /> : null}
         <span
           aria-hidden
           className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm ring-1 ring-black/40"
@@ -516,7 +541,12 @@ function FocusPointPicker({
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center px-6">
-            <FocusPointSurface imageUrl={imageUrl} focus={focus} onChange={onChange} />
+            <FocusPointSurface
+              imageUrl={imageUrl}
+              video={video}
+              focus={focus}
+              onChange={onChange}
+            />
           </div>
           <DialogFooter variant="bare">
             <Button
@@ -559,6 +589,7 @@ export function ChatBackgroundSettingsSection() {
   const {
     appearance: a,
     imageUrl,
+    imageKind,
     imageRevision,
     imageAspect,
     backgroundSlot,
@@ -569,8 +600,8 @@ export function ChatBackgroundSettingsSection() {
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const flipShortcut = shortcutLabelForCommand(keybindings, "background.flip");
   const previewUrl = useBackgroundEffectUrl(
-    imageUrl,
-    a.backgroundEffect,
+    imageKind === "video" ? null : imageUrl,
+    imageKind === "image" ? a.backgroundEffect : "none",
     globalBackgroundSourceKey(imageRevision),
   );
   const { busy, error, run } = useImageTask();
@@ -579,7 +610,7 @@ export function ChatBackgroundSettingsSection() {
     <SettingsSection
       id="chat-background"
       title="Chat background"
-      description="An image behind your chat panes. It stays on this device."
+      description="An image, GIF, or video behind your chat panes. It stays on this device."
     >
       <SettingsRow
         title="Background"
@@ -634,6 +665,7 @@ export function ChatBackgroundSettingsSection() {
       ) : (
         <BackgroundImagePicker
           imageUrl={previewUrl ?? imageUrl}
+          video={imageKind === "video"}
           haze={a.haze}
           emptyOpacity={a.backgroundEmptyOpacity}
           busy={busy}
@@ -648,7 +680,11 @@ export function ChatBackgroundSettingsSection() {
         <>
           <SettingsRow
             title="Background effect"
-            description={BACKGROUND_EFFECT_DESCRIPTIONS[a.backgroundEffect]}
+            description={
+              imageKind === "image"
+                ? BACKGROUND_EFFECT_DESCRIPTIONS[a.backgroundEffect]
+                : "GIFs and videos play as they are; effects apply to still images."
+            }
             resetAction={<ResetButton label="background effect" keys={["backgroundEffect"]} />}
             control={
               <Segmented
@@ -676,6 +712,7 @@ export function ChatBackgroundSettingsSection() {
             control={
               <FocusPointPicker
                 imageUrl={imageUrl}
+                video={imageKind === "video"}
                 imageAspect={imageAspect}
                 slot={backgroundSlot}
                 focus={focus}

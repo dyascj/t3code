@@ -313,7 +313,8 @@ import { useThreadLinkedPullRequest } from "./pullRequest/useThreadLinkedPullReq
 import { AsciiOceanBackground } from "../glass/AsciiOceanBackground";
 import { GradientBlurBackground } from "../glass/GradientBlurBackground";
 import { findChatPane, useArtInkRef } from "../glass/artInk";
-import { useChatBackgroundSurface } from "../glass/projectChatBackground";
+import { BackgroundVideo } from "../glass/BackgroundVideo";
+import { useChatBackgroundSurface, useChatBackgroundVideo } from "../glass/projectChatBackground";
 import { useProactivePanels } from "../hooks/useProactivePanels";
 import { useIncrementalTimelineEntries } from "../hooks/useIncrementalTimelineEntries";
 import { useRightPanelSurfaceClose } from "../hooks/useRightPanelSurfaceClose";
@@ -1092,11 +1093,11 @@ export default function ChatView(props: ChatViewProps) {
     startNewThreadForProject(activeProjectRef, handleNewThread);
   };
   const projectGroupingSettings = selectProjectGroupingSettings(settings);
-  const chatBackgroundSurface = useChatBackgroundSurface(
-    activeProject
-      ? deriveLogicalProjectKeyFromSettings(activeProject, projectGroupingSettings)
-      : null,
-  );
+  const chatBackgroundProjectKey = activeProject
+    ? deriveLogicalProjectKeyFromSettings(activeProject, projectGroupingSettings)
+    : null;
+  const chatBackgroundSurface = useChatBackgroundSurface(chatBackgroundProjectKey);
+  const chatBackgroundVideo = useChatBackgroundVideo(chatBackgroundProjectKey);
   const activeEnvironmentBootstrapComplete = useEnvironmentShellHasSnapshot(
     activeThread?.environmentId ?? null,
   );
@@ -3259,7 +3260,8 @@ export default function ChatView(props: ChatViewProps) {
             data-session-empty={isDraftHeroState ? "true" : "false"}
             {...chatBackgroundSurface}
           >
-            <GradientBlurBackground />
+            {chatBackgroundVideo ? <BackgroundVideo src={chatBackgroundVideo} /> : null}
+            <GradientBlurBackground videoSrc={chatBackgroundVideo} />
             <AsciiOceanBackground />
             <ThreadFindCanvas
               findOptions={{

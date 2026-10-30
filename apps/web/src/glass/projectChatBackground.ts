@@ -10,9 +10,10 @@ import {
   isChatBackgroundScope,
   isDarkScheme,
   normalizeEffectAndHaze,
+  subscribeGlassState,
   subscribeScheme,
 } from "./glassAppearance";
-import { deleteImage, readImage, writeImage } from "./imageStore";
+import { deleteImage, mediaKind, type MediaKind, readImage, writeImage } from "./imageStore";
 
 /*
  * Per-project chat backgrounds. A project with an image
@@ -31,7 +32,10 @@ export interface ProjectChatBackgroundSettings {
 const STORAGE_KEY = "t3code:project-chat-backgrounds:v1";
 const imageKey = (projectKey: string) => `project:${projectKey}`;
 
-type ImageEntry = { readonly url: string; readonly revision: number } | "loading" | "missing";
+type ImageEntry =
+  | { readonly url: string; readonly kind: MediaKind; readonly revision: number }
+  | "loading"
+  | "missing";
 
 let stored: Record<string, ProjectChatBackgroundSettings> = readStored();
 const images = new Map<string, ImageEntry>();
@@ -123,7 +127,11 @@ export async function setProjectChatBackgroundImage(
   const previous = images.get(projectKey);
   if (typeof previous === "object") URL.revokeObjectURL(previous.url);
   imageRevision += 1;
-  images.set(projectKey, { url: URL.createObjectURL(file), revision: imageRevision });
+  images.set(projectKey, {
+    url: URL.createObjectURL(file),
+    kind: mediaKind(file),
+    revision: imageRevision,
+  });
   writeStored({ ...stored, [projectKey]: normalize(settings) ?? settings });
 }
 
@@ -145,7 +153,9 @@ function ensureImage(projectKey: string) {
       imageRevision += 1;
       images.set(
         projectKey,
-        blob ? { url: URL.createObjectURL(blob), revision: imageRevision } : "missing",
+        blob
+          ? { url: URL.createObjectURL(blob), kind: mediaKind(blob), revision: imageRevision }
+          : "missing",
       );
       notify();
     })
@@ -162,6 +172,7 @@ export interface ProjectChatBackground {
   readonly settings: ProjectChatBackgroundSettings;
   /** Raw image URL, before any effect. */
   readonly src: string;
+  readonly kind: MediaKind;
   readonly revision: number;
 }
 
@@ -176,7 +187,7 @@ export function useProjectChatBackground(
   ensureImage(projectKey);
   const image = images.get(projectKey);
   if (typeof image !== "object") return null;
-  return { settings, src: image.url, revision: image.revision };
+  return { settings, src: image.url, kind: image.kind, revision: image.revision };
 }
 
 /**
@@ -218,6 +229,18 @@ export function useBackgroundEffectUrl(
   return prepared?.key === key ? prepared.url : null;
 }
 
+/** A project background's effect; a GIF or video plays as is. */
+export const backgroundEffectFor = (background: ProjectChatBackground | null): BackgroundEffect =>
+  background?.kind === "image" ? background.settings.effect : "none";
+
+/** The video playing behind a chat pane, when its background is one. */
+export function useChatBackgroundVideo(projectKey: string | null | undefined): string | null {
+  const background = useProjectChatBackground(projectKey);
+  const glass = useSyncExternalStore(subscribeGlassState, getGlassState, getGlassState);
+  if (background) return background.kind === "video" ? background.src : null;
+  return glass.imageKind === "video" ? glass.imageUrl : null;
+}
+
 /**
  * Attributes for the chat pane that carries the background: the project's
  * own image and strengths when it has one, otherwise the global background
@@ -228,8 +251,8 @@ export function useChatBackgroundSurface(projectKey: string | null | undefined) 
   // The global image follows its focal point; a project's own image stays centered.
   const ref = useFocalBackgroundRef(background === null);
   const url = useBackgroundEffectUrl(
-    background?.src ?? null,
-    background?.settings.effect ?? "none",
+    background && background.kind !== "video" ? background.src : null,
+    backgroundEffectFor(background),
     projectBackgroundSourceKey(background?.revision ?? 0),
   );
   return {
