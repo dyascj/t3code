@@ -1,4 +1,5 @@
 import { StrictMode } from "react";
+import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import { EnvironmentId, ThreadId, type ScopedThreadRef } from "@t3tools/contracts";
 import { expect, it } from "vite-plus/test";
 import { page } from "vite-plus/test/browser";
@@ -21,7 +22,13 @@ const container = { width: 1200, height: 800 };
 const placement = { x: 908, y: 0, right: 12, width: 280, height: 400 } as const;
 
 function setup() {
-  useRightPanelStore.setState({ threadPanelVisibilityByThreadKey: {} });
+  // The card starts folded; these cases are about a card the user has opened.
+  useRightPanelStore.setState({
+    threadPanelVisibilityByThreadKey: {
+      [scopedThreadKey(threadA)]: { inlineOpen: true, popoverOpen: false },
+      [scopedThreadKey(threadB)]: { inlineOpen: true, popoverOpen: false },
+    },
+  });
   const anchor = document.createElement("div");
   document.body.append(anchor);
   return {
