@@ -5,6 +5,7 @@
 @import "./glass/styles/composer.css";
 @import "./glass/styles/transcript.css";
 @import "./glass/styles/shell.css";
+@import "./glass/styles/agents.css";
 
 @custom-variant dark (&:is(.dark, .dark *));
 @custom-variant light (&:not(.dark, .dark *));
@@ -254,6 +255,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --color-update: var(--update);
   --color-success-foreground: var(--success-foreground);
   --color-success: var(--success);
+  --color-activity: #459bf7;
   --color-diff-addition: var(--diff-addition);
   --color-diff-deletion: var(--diff-deletion);
   --color-diff-addition-foreground: var(--diff-addition-foreground);
@@ -3334,6 +3336,26 @@ html:not(.dark) [data-slot="composer-host"] {
   box-shadow:
     0 6px 24px color-mix(in srgb, var(--foreground) 9%, transparent),
     0 2px 6px color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+
+/* Cards that wear the composer's glass: like the agent tree. */
+.glass-card {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-hairline);
+  background: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--foreground) 3%, transparent),
+    color-mix(in srgb, var(--theme-base-dark) 20%, transparent)
+  );
+  box-shadow: inset 0 1px rgb(255 255 255 / 3%);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+html:not(.dark) .glass-card {
+  background: var(--theme-base-light);
+  box-shadow:
+    0 6px 24px color-mix(in srgb, var(--foreground) 6%, transparent),
+    0 2px 6px color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 
 /* Motion. Popups slide in from their anchor at full size; nothing waits on a close. */

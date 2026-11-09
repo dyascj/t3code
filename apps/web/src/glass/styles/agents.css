@@ -1,0 +1,140 @@
+/* Glass: the agent tree in the right panel. Each card is .glass-card; this file
+   draws the branches. Narrow, every level hangs off a rail under its parent's
+   avatar and turns in with a rounded elbow. Wide, the first level fans out in a
+   row under the root (up to four of them), after affectUI's agent tree. */
+
+.agent-tree {
+  --agent-tree-line: color-mix(in srgb, var(--color-activity) 55%, transparent);
+  --agent-tree-stroke: 1.5px;
+  --agent-tree-gap: 0.75rem;
+  /* The card's padding plus half its 2rem avatar, so rails and elbows meet its center. */
+  --agent-tree-rail: 1.875rem;
+  --agent-tree-elbow: 1.875rem;
+  --agent-tree-indent: 1.125rem;
+  --agent-tree-radius: 0.625rem;
+  --agent-tree-drop: 1.25rem;
+}
+
+.agent-tree-children {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--agent-tree-gap);
+  margin: 0 0 0 calc(var(--agent-tree-rail) - var(--agent-tree-stroke) / 2);
+  padding: var(--agent-tree-gap) 0 0 var(--agent-tree-indent);
+  list-style: none;
+}
+.agent-tree-children > li {
+  position: relative;
+  min-width: 0;
+}
+/* Where the branch leaves its parent. */
+.agent-tree-children::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: calc(var(--agent-tree-stroke) / 2 - 3px);
+  z-index: 1;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--agent-tree-line);
+}
+/* Down from the gap above, then in to the card. */
+.agent-tree-children > li::before {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--agent-tree-gap));
+  left: calc(-1 * var(--agent-tree-indent));
+  width: var(--agent-tree-indent);
+  height: calc(var(--agent-tree-gap) + var(--agent-tree-elbow));
+  border-bottom: var(--agent-tree-stroke) solid var(--agent-tree-line);
+  border-left: var(--agent-tree-stroke) solid var(--agent-tree-line);
+  border-bottom-left-radius: var(--agent-tree-radius);
+  pointer-events: none;
+}
+/* The rail runs on past the elbow to the next sibling. */
+.agent-tree-children > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--agent-tree-elbow) - var(--agent-tree-radius));
+  bottom: 0;
+  left: calc(-1 * var(--agent-tree-indent));
+  border-left: var(--agent-tree-stroke) solid var(--agent-tree-line);
+  pointer-events: none;
+}
+
+@container agent-tree (min-width: 52rem) {
+  /* Past four agents a row gets too tight to read, so the tree stays vertical, centered. */
+  .agent-tree:not(:has(> [data-fan])) {
+    width: 100%;
+    max-width: 44rem;
+    margin-inline: auto;
+  }
+  .agent-tree:has(> [data-fan]) > .agent-tree-root-card {
+    width: 100%;
+    max-width: 26rem;
+    margin-inline: auto;
+  }
+  .agent-tree-children.agent-tree-root-children[data-fan] {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+    margin: 0;
+    padding: calc(var(--agent-tree-drop) * 2) 0 0;
+  }
+  .agent-tree-children.agent-tree-root-children[data-fan] > li {
+    flex: 1 1 0;
+  }
+  .agent-tree-children.agent-tree-root-children[data-fan]::before {
+    left: calc(50% - 3px);
+  }
+  /* The stem from the root down to the bar. */
+  .agent-tree-children.agent-tree-root-children[data-fan]::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: calc(50% - var(--agent-tree-stroke) / 2);
+    height: var(--agent-tree-drop);
+    border-left: var(--agent-tree-stroke) solid var(--agent-tree-line);
+  }
+  /* The bar across, each card's share of it reaching half the gap either side. */
+  .agent-tree-children.agent-tree-root-children[data-fan] > li::before {
+    top: calc(-1 * var(--agent-tree-drop));
+    right: -0.5rem;
+    left: -0.5rem;
+    width: auto;
+    height: var(--agent-tree-drop);
+    border: 0;
+    border-top: var(--agent-tree-stroke) solid var(--agent-tree-line);
+    border-radius: 0;
+  }
+  .agent-tree-children.agent-tree-root-children[data-fan] > li:first-child::before {
+    left: calc(50% - var(--agent-tree-stroke) / 2);
+    border-left: var(--agent-tree-stroke) solid var(--agent-tree-line);
+    border-top-left-radius: var(--agent-tree-radius);
+  }
+  .agent-tree-children.agent-tree-root-children[data-fan] > li:last-child::before {
+    right: calc(50% - var(--agent-tree-stroke) / 2);
+    border-right: var(--agent-tree-stroke) solid var(--agent-tree-line);
+    border-top-right-radius: var(--agent-tree-radius);
+  }
+  /* Middle cards drop straight down from the bar. */
+  .agent-tree-children.agent-tree-root-children[data-fan] > li:not(:last-child)::after {
+    top: calc(-1 * var(--agent-tree-drop));
+    bottom: auto;
+    left: calc(50% - var(--agent-tree-stroke) / 2);
+    height: var(--agent-tree-drop);
+  }
+  .agent-tree-children.agent-tree-root-children[data-fan] > li:first-child::after {
+    display: none;
+  }
+}
+
+/* The open thread's card and a hovered card firm up their hairline. */
+.glass-card[data-agent-card][data-current] {
+  border-color: color-mix(in srgb, var(--color-activity) 45%, transparent);
+}
+.glass-card[data-agent-card]:has(> button:first-child:hover) {
+  border-color: color-mix(in srgb, var(--foreground) 22%, transparent);
+}

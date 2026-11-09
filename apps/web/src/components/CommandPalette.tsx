@@ -79,6 +79,7 @@ import {
   SquarePenIcon,
   TextSearchIcon,
   UserPlusIcon,
+  WorkflowIcon,
 } from "lucide-react";
 import { openThreadFind } from "./chat/threadFindStore";
 import {
@@ -1424,6 +1425,20 @@ function OpenCommandPaletteDialog(props: {
       icon: <PullRequestGlyph.link className={ITEM_ICON_CLASS} />,
       run: async () => {
         useRightPanelStore.getState().open(threadRef, "pull-requests");
+      },
+    });
+  }
+
+  if (activeThread !== null) {
+    const threadRef = scopeThreadRef(activeThread.environmentId, activeThread.id);
+    actionItems.push({
+      kind: "action",
+      value: "action:open-agent-tree",
+      searchTerms: ["agents", "subagents", "tree", "delegates", "workers"],
+      title: "Show agents",
+      icon: <WorkflowIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        useRightPanelStore.getState().open(threadRef, "agents");
       },
     });
   }
