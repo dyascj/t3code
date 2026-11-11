@@ -1,10 +1,14 @@
-# T3 Code Glass
+# Mado 窓
 
 <p align="center">
-  <img width="1000" alt="T3 Code Glass: the window glass, title bar tabs, and the animated ASCII ocean behind a new chat" src="assets/hero.png" />
+  <img width="160" alt="Mado app icon: a white 窓 on a black glass tile" src="assets/mado-icon.png" />
 </p>
 
-A fork of [T3 Code](https://github.com/pingdotgg/t3code) that follows its stable releases and adds:
+<p align="center">
+  <img width="1000" alt="Mado: the window glass, title bar tabs, and the animated ASCII ocean behind a new chat" src="assets/hero.png" />
+</p>
+
+Mado (窓, "window") is a fork of [T3 Code](https://github.com/pingdotgg/t3code) by T3 Tools Inc. It follows T3 Code's stable releases and adds:
 
 - **Window glass.** On macOS in dark mode the window is translucent and blurs the desktop behind it.
 - **Appearance controls.** Tint color, sidebar translucency, and blur strength in Settings > Appearance.
@@ -34,11 +38,11 @@ cd t3code-glass
 scripts/glass-update.sh
 ```
 
-The script moves the fork onto the newest stable T3 Code release, builds the app, backs up your current `/Applications/T3 Code (Beta).app` and its database to `~/.t3-glass-backups`, and installs the new build. Run it again whenever T3 Code ships a stable release. `--build-only` stops after building; `--install` installs the last build.
+The script moves the fork onto the newest stable T3 Code release, builds the app, backs up your current `/Applications/Mado.app` (or an older `T3 Code (Beta).app`) and its database to `~/.t3-glass-backups`, and installs the new build. Run it again whenever T3 Code ships a stable release. `--build-only` stops after building; `--install` installs the last build.
 
 If a new release conflicts with the fork, the script stops before building and leaves your installed app alone.
 
-Local builds are signed ad hoc and never auto-update. macOS may ask once per build for access to the "T3 Code (Beta) Safe Storage" keychain item; choose Always Allow.
+Local builds are signed ad hoc and never auto-update. macOS may ask once per build for access to the "t3code Safe Storage" keychain item; choose Always Allow.
 
 ## Maintaining the fork
 
@@ -48,5 +52,9 @@ Local builds are signed ad hoc and never auto-update. macOS may ask once per bui
 - If the script reports a conflict: run `git rebase --onto <new tag> <old tag> glass`, fix the conflicts in the fork's commits, `git push --force-with-lease origin glass`, then run the script again.
 
 ## Notices
+
+Mado is not affiliated with or endorsed by T3 Tools Inc. T3 Code is MIT licensed; its license and copyright notice are kept in [`LICENSE`](../LICENSE).
+
+The Mado icon's 窓 is drawn from Shippori Mincho (SIL Open Font License 1.1).
 
 The background effects include third-party code under the MIT license; see [`apps/web/src/glass/THIRD_PARTY_LICENSE`](../apps/web/src/glass/THIRD_PARTY_LICENSE).

@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Keeps the glass fork (dyascj/t3code, branch glass) on the latest stable
+# Keeps Mado, the glass fork (dyascj/t3code, branch glass), on the latest stable
 # T3 Code release, builds it, and swaps it into /Applications. See .github/README.md.
 #
 #   scripts/glass-update.sh              update to the newest stable, build, install
@@ -13,7 +13,7 @@ set -euo pipefail
 
 # The checkout this script lives in, through any symlink to it.
 REPO="${0:A:h:h}"
-APP_NAME="T3 Code (Beta)"
+APP_NAME="Mado"
 APP="/Applications/$APP_NAME.app"
 BUNDLE_ID="com.t3tools.t3code"
 BACKUP_DIR="$HOME/.t3-glass-backups"
@@ -129,8 +129,10 @@ install_build() {
       "$HOME/.t3/userdata/state.sqlite" "$stamp/state.sqlite"
   fi
   [[ -d "$APP" ]] && mv "$APP" "$stamp/"
-  # 0.1.0 renamed the app from Alpha to Beta; retire the old bundle too.
+  # Earlier builds were named T3 Code (Alpha), then T3 Code (Beta); retire those bundles too.
+  # They share the bundle id, so the quit above already closed them.
   [[ -d "/Applications/T3 Code (Alpha).app" ]] && mv "/Applications/T3 Code (Alpha).app" "$stamp/"
+  [[ -d "/Applications/T3 Code (Beta).app" ]] && mv "/Applications/T3 Code (Beta).app" "$stamp/"
   # Keep only the newest backup; each holds a full database copy.
   command ls -1d "$BACKUP_DIR"/*/ 2>/dev/null | sort -r | tail -n +2 | while read -r old; do rm -rf "$old"; done
 
@@ -138,7 +140,7 @@ install_build() {
   ditto "$built" "$APP"
   xattr -dr com.apple.quarantine "$APP" 2>/dev/null || true
   open "$APP"
-  say "Done. $APP_NAME is the glass build."
+  say "Done. $APP_NAME is installed."
 }
 
 case "$mode" in

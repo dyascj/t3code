@@ -2759,8 +2759,8 @@ export function resolvePackageManagerUserAgent(packageManager: string): string {
 
 export function resolveDesktopProductName(version: string): string {
   return resolveDesktopUpdateChannel(version) === "nightly"
-    ? "T3 Code (Nightly)"
-    : (desktopPackageJson.productName ?? "T3 Code");
+    ? "Mado (Nightly)"
+    : (desktopPackageJson.productName ?? "Mado");
 }
 
 export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
@@ -2783,7 +2783,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     afterPack: (yield* Path.Path).join(yield* RepoRoot, "scripts/prepare-server-compile-cache.cjs"),
     appId: DESKTOP_APP_ID,
     productName: resolveDesktopProductName(version),
-    artifactName: "T3-Code-${version}-${arch}.${ext}",
+    artifactName: "Mado-${version}-${arch}.${ext}",
     electronLanguages: [...DESKTOP_ELECTRON_LANGUAGES],
     files: [
       ...DESKTOP_FILE_EXCLUSIONS,
@@ -2836,19 +2836,18 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
         // macOS 26 offers Messages/Mail codes in every text field unless opted out.
         NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac: true,
         NSLocalNetworkUsageDescription:
-          "T3 Code connects to devices on your local network for remote environments and commands run by terminals and coding agents.",
-        NSCalendarsUsageDescription:
-          "Commands you run in T3 Code may need access to your calendars.",
+          "Mado connects to devices on your local network for remote environments and commands run by terminals and coding agents.",
+        NSCalendarsUsageDescription: "Commands you run in Mado may need access to your calendars.",
         NSCalendarsFullAccessUsageDescription:
-          "Commands you run in T3 Code may need to read and write your calendar events.",
+          "Commands you run in Mado may need to read and write your calendar events.",
         NSCalendarsWriteOnlyAccessUsageDescription:
-          "Commands you run in T3 Code may need to add events to your calendars.",
+          "Commands you run in Mado may need to add events to your calendars.",
         NSScreenCaptureUsageDescription:
-          "T3 Code captures the active window when you use the window capture shortcut.",
+          "Mado captures the active window when you use the window capture shortcut.",
         NSCameraUsageDescription:
-          "T3 Code lets commands run by terminals and coding agents use the camera.",
+          "Mado lets commands run by terminals and coding agents use the camera.",
         NSMicrophoneUsageDescription:
-          "T3 Code lets commands run by terminals and coding agents use the microphone.",
+          "Mado lets commands run by terminals and coding agents use the microphone.",
         // macOS lists an app under Default web browser only when it opens web
         // pages as documents as well as http and https links (see protocols).
         CFBundleDocumentTypes: [
@@ -2862,7 +2861,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       },
       protocols: [
         {
-          name: "T3 Code",
+          name: "Mado",
           schemes: ["t3code", "t3code-dev"],
         },
         {
@@ -2915,7 +2914,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       maintainer: "T3 Tools <hello@t3.codes>",
       protocols: [
         {
-          name: "T3 Code",
+          name: "Mado",
           schemes: ["t3code", "t3code-dev"],
         },
       ],
