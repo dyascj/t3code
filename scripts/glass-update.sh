@@ -127,8 +127,9 @@ install_build() {
   # statev2.sqlite is the live database; state.sqlite is the retired V1 file.
   local db="$HOME/.t3/userdata/statev2.sqlite"
   if [[ -f "$db" ]]; then
-    # The copy can be as big as the database; keep 2 GB spare so the disk never fills.
-    local need_kb=$(( $(stat -f %z "$db") / 1024 + 2097152 ))
+    # VACUUM INTO skips free pages, so the copy is the live data only; keep 2 GB spare on top.
+    local live_kb=$(node --no-warnings -e "const {DatabaseSync}=require('node:sqlite'); const d=new DatabaseSync(process.argv[1],{readOnly:true}); const g=q=>Object.values(d.prepare(q).get())[0]; console.log(Math.ceil((g('PRAGMA page_count')-g('PRAGMA freelist_count'))*g('PRAGMA page_size')/1024))" "$db")
+    local need_kb=$(( live_kb + 2097152 ))
     local free_kb=$(df -k "$BACKUP_DIR" | awk 'NR==2 {print $4}')
     if (( free_kb < need_kb )); then
       rm -rf "$stamp"
