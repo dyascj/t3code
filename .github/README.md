@@ -1,14 +1,34 @@
-# Mado 窓
+<div align="center">
+  <img width="96" alt="Mado app icon: a white 窓 on a black glass tile" src="assets/mado-icon.png" />
 
-<p align="center">
-  <img width="160" alt="Mado app icon: a white 窓 on a black glass tile" src="assets/mado-icon.png" />
-</p>
+  <h1>Mado 窓</h1>
+
+  <p><strong>A glassier, more opinionated T3 Code.</strong></p>
+  <p>Window glass, chat backgrounds and a calmer layout, rebuilt on every stable T3 Code release.</p>
+
+  <p>
+    <img alt="macOS on Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111111?style=flat-square&logo=apple&logoColor=white" />
+    <a href="https://github.com/pingdotgg/t3code"><img alt="Based on T3 Code" src="https://img.shields.io/badge/based%20on-T3%20Code-111111?style=flat-square" /></a>
+    <a href="../LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" /></a>
+  </p>
+
+  <p>
+    <a href="#whats-different">What's different</a> ·
+    <a href="#build-it">Build it</a> ·
+    <a href="#maintaining-the-fork">Maintaining the fork</a> ·
+    <a href="https://github.com/pingdotgg/t3code">T3 Code</a>
+  </p>
+</div>
+
+<br />
 
 <p align="center">
   <img width="1000" alt="Mado: the window glass, title bar tabs, and the animated ASCII ocean behind a new chat" src="assets/hero.png" />
 </p>
 
-Mado (窓, "window") is a fork of [T3 Code](https://github.com/pingdotgg/t3code) by T3 Tools Inc. It follows T3 Code's stable releases and adds:
+## What's different
+
+Mado (窓, Japanese for "window") is a fork of [T3 Code](https://github.com/pingdotgg/t3code) by T3 Tools Inc. It follows T3 Code's stable releases and adds:
 
 - **Window glass.** On macOS in dark mode the window is translucent and blurs the desktop behind it.
 - **Appearance controls.** Tint color, sidebar translucency, and blur strength in Settings > Appearance.
