@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Keeps Mado, the glass fork (dyascj/t3code, branch glass), on the latest stable
+# Keeps Mado, the glass fork (dyascj/mado, branch glass), on the latest stable
 # T3 Code release, builds it, and swaps it into /Applications. See .github/README.md.
 #
 #   scripts/glass-update.sh              update to the newest stable, build, install

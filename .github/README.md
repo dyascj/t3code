@@ -24,7 +24,7 @@ Everything else is stock T3 Code. Backgrounds and appearance settings stay on yo
 
 ## Where things live
 
-- Code: the `glass` branch of [dyascj/t3code](https://github.com/dyascj/t3code/tree/glass). Its commits sit on top of the latest stable T3 Code tag, so `git log <tag>..glass` lists every change the fork makes.
+- Code: the `glass` branch of [dyascj/mado](https://github.com/dyascj/mado/tree/glass). Its commits sit on top of the latest stable T3 Code tag, so `git log <tag>..glass` lists every change the fork makes.
 - Build and update script: [`scripts/glass-update.sh`](../scripts/glass-update.sh). On CJ's Mac it is also on PATH as `t3-glass-update` (a symlink in `~/.local/bin`).
 - T3 Code's own readme is still at [`README.md`](../README.md). This file lives in `.github/` so GitHub shows it on the repo page without touching upstream files, which keeps updates conflict-free.
 
@@ -33,8 +33,8 @@ Everything else is stock T3 Code. Backgrounds and appearance settings stay on yo
 Requires macOS on Apple Silicon, Node 24, pnpm, and Rust ([rustup.rs](https://rustup.rs)).
 
 ```bash
-git clone -b glass https://github.com/dyascj/t3code.git t3code-glass
-cd t3code-glass
+git clone -b glass https://github.com/dyascj/mado.git mado
+cd mado
 scripts/glass-update.sh
 ```
 
