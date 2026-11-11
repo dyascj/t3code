@@ -124,9 +124,18 @@ install_build() {
   mkdir -p "$stamp"
   say "Backing up the current app and database to $stamp"
   # Database first: if the copy fails, the installed app has not been touched.
-  if [[ -f "$HOME/.t3/userdata/state.sqlite" ]]; then
+  # statev2.sqlite is the live database; state.sqlite is the retired V1 file.
+  local db="$HOME/.t3/userdata/statev2.sqlite"
+  if [[ -f "$db" ]]; then
+    # The copy can be as big as the database; keep 2 GB spare so the disk never fills.
+    local need_kb=$(( $(stat -f %z "$db") / 1024 + 2097152 ))
+    local free_kb=$(df -k "$BACKUP_DIR" | awk 'NR==2 {print $4}')
+    if (( free_kb < need_kb )); then
+      rm -rf "$stamp"
+      fail "Backing up the database needs about $(( need_kb / 1048576 )) GB free and only $(( free_kb / 1048576 )) GB is. Free some space and run glass-update.sh --install."
+    fi
     node --no-warnings -e "const {DatabaseSync}=require('node:sqlite'); const db=new DatabaseSync(process.argv[1],{readOnly:true}); db.exec(\"VACUUM INTO '\"+process.argv[2]+\"'\"); db.close()" \
-      "$HOME/.t3/userdata/state.sqlite" "$stamp/state.sqlite"
+      "$db" "$stamp/statev2.sqlite" || { rm -rf "$stamp"; fail "The database backup failed. Nothing was installed."; }
   fi
   [[ -d "$APP" ]] && mv "$APP" "$stamp/"
   # Earlier builds were named T3 Code (Alpha), then T3 Code (Beta); retire those bundles too.
