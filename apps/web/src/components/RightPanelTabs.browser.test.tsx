@@ -103,11 +103,13 @@ describe("RightPanelTabs", () => {
           onAddPullRequest={noop}
           onAddPullRequests={noop}
           onAddDevice={noop}
+          onAddAgents={noop}
           browserAvailable={false}
           terminalAvailable
           diffAvailable={false}
           filesAvailable={false}
           pullRequestAvailable={false}
+          agentsAvailable={false}
           pullRequestsAvailable={false}
           deviceAvailable={false}
         >
